@@ -1,0 +1,54 @@
+{
+  "id": 4,
+  "result": {
+    "rateLimits": {
+      "limitId": "codex",
+      "limitName": "Codex",
+      "primary": {
+        "usedPercent": 27,
+        "windowDurationMins": 300,
+        "resetsAt": 1784548800
+      },
+      "secondary": {
+        "usedPercent": 59,
+        "windowDurationMins": 10080,
+        "resetsAt": 1784822400
+      },
+      "credits": {
+        "hasCredits": true,
+        "unlimited": false,
+        "balance": "12.50"
+      },
+      "planType": "pro"
+    },
+    "rateLimitsByLimitId": {
+      "codex": {
+        "limitId": "codex",
+        "limitName": "Codex",
+        "primary": {
+          "usedPercent": 27,
+          "windowDurationMins": 300,
+          "resetsAt": 1784548800
+        },
+        "credits": {
+          "hasCredits": true,
+          "unlimited": false,
+          "balance": "12.50"
+        },
+        "planType": "pro"
+      },
+      "reviews": {
+        "limitId": "reviews",
+        "limitName": "Code Reviews",
+        "primary": {
+          "usedPercent": 8,
+          "windowDurationMins": null,
+          "resetsAt": null
+        },
+        "credits": null,
+        "planType": "org_preview"
+      }
+    },
+    "rateLimitResetCredits": null
+  }
+}

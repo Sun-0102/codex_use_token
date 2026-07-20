@@ -1,0 +1,8 @@
+{
+  "id": 5,
+  "result": {
+    "rateLimits": {
+      "limitId": "codex"
+    }
+  }
+}

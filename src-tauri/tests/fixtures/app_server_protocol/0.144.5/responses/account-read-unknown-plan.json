@@ -1,0 +1,12 @@
+{
+  "id": 2,
+  "result": {
+    "account": {
+      "type": "chatgpt",
+      "email": "fixture@example.invalid",
+      "planType": "future_super_plan"
+    },
+    "requiresOpenaiAuth": false,
+    "futureAccountField": "ignored"
+  }
+}

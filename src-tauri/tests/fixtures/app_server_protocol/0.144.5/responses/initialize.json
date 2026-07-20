@@ -1,0 +1,10 @@
+{
+  "id": 1,
+  "result": {
+    "userAgent": "codex-cli/0.144.5",
+    "codexHome": "/fixture/codex-home",
+    "platformFamily": "unix",
+    "platformOs": "macos",
+    "futureCapability": true
+  }
+}

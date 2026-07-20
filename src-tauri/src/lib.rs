@@ -1,0 +1,40 @@
+pub mod app_server_account;
+pub mod app_server_connection;
+pub mod app_server_handshake;
+pub mod app_server_jsonl;
+pub mod app_server_protocol;
+pub mod app_server_rate_limits;
+pub mod app_server_session;
+pub mod app_server_supervisor;
+pub mod app_server_thread_usage;
+pub mod app_server_usage;
+pub mod cc_switch_usage;
+mod cli_probe;
+mod commands;
+mod desktop;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    let builder = tauri::Builder::default().plugin(tauri_plugin_positioner::init());
+
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init());
+
+    builder
+        .setup(desktop::setup)
+        .on_window_event(desktop::handle_window_event)
+        .invoke_handler(tauri::generate_handler![
+            commands::runtime_health,
+            commands::codex_cli_status,
+            commands::codex_account_status,
+            commands::codex_rate_limits_status,
+            commands::codex_usage_status,
+            commands::cc_switch_usage_status,
+            commands::codex_thread_token_usage_status,
+            commands::hide_usage_window,
+            commands::set_usage_window_mode,
+            commands::update_tray_usage
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
