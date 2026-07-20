@@ -180,6 +180,14 @@ export function UsageDashboard({
   const tokenUsage = presentTokenUsage(usageStatus, ccSwitchUsageStatus);
   const threadTokenUsage = presentThreadTokenUsage(threadTokenUsageStatus);
   const planCredits = presentPlanCredits(accountStatus, snapshot);
+  const connectionDetail = presentConnectionDetail({
+    accountStatus,
+    accountDetail: accountPresentation.detail,
+    cliStatus,
+    cliDetail: cliPresentation.detail,
+    isLive,
+    isStale,
+  });
 
   if (mode === "compact") {
     return (
@@ -285,15 +293,7 @@ export function UsageDashboard({
                   ? "账户已连接"
                   : accountPresentation.label}
               </strong>
-              <small>
-                {accountStatus?.state === "signedIn"
-                  ? isLive
-                    ? "真实账户信息 · 额度实时"
-                    : isStale
-                      ? "真实账户信息 · 额度过期"
-                      : "真实账户信息 · 额度待同步"
-                  : accountPresentation.detail ?? cliPresentation.detail}
-              </small>
+              <small>{connectionDetail}</small>
             </article>
             <article className="metric-card">
               <span>套餐与 Credits</span>
@@ -315,6 +315,37 @@ export function UsageDashboard({
   );
 }
 
+export function presentConnectionDetail({
+  accountStatus,
+  accountDetail,
+  cliStatus,
+  cliDetail,
+  isLive,
+  isStale,
+}: {
+  accountStatus: CodexAccountStatus | null;
+  accountDetail: string | null;
+  cliStatus: CodexCliStatus | null;
+  cliDetail: string;
+  isLive: boolean;
+  isStale: boolean;
+}): string {
+  const detail =
+    accountStatus?.state === "signedIn"
+      ? accountStatus.isStale
+        ? isStale
+          ? "账户与额度均为过期缓存"
+          : "账户过期缓存 · 额度实时"
+        : isLive
+          ? "真实账户信息 · 额度实时"
+          : isStale
+            ? "真实账户信息 · 额度过期"
+            : "真实账户信息 · 额度待同步"
+      : (accountDetail ?? cliDetail);
+
+  return cliStatus?.isStale ? `${detail} · CLI 状态过期` : detail;
+}
+
 export function presentAccountStatus(status: CodexAccountStatus | null): {
   label: string;
   detail: string | null;
@@ -332,14 +363,18 @@ export function presentAccountStatus(status: CodexAccountStatus | null): {
     case "signedIn":
       return {
         label: "账户已连接",
-        detail: "真实账户信息 · 额度待同步",
-        planDetail: "真实套餐 · Credits 未提供",
+        detail: status.isStale
+          ? "账户信息 · 过期缓存"
+          : "真实账户信息 · 额度待同步",
+        planDetail: status.isStale
+          ? "真实套餐 · 过期缓存"
+          : "真实套餐 · Credits 未提供",
       };
     case "signedOut":
       return {
-        label: "账户未登录",
-        detail: status.message,
-        planDetail: "账户未登录",
+        label: status.isStale ? "账户状态缓存" : "账户未登录",
+        detail: status.isStale ? `过期缓存 · ${status.message}` : status.message,
+        planDetail: status.isStale ? "账户状态 · 过期缓存" : "账户未登录",
       };
     case "unavailable":
       return {
@@ -371,7 +406,7 @@ export function presentPlanCredits(
   if (accountStatus?.state === "signedOut") {
     return {
       plan: "—",
-      detail: "账户未登录",
+      detail: accountStatus.isStale ? "账户状态 · 过期缓存" : "账户未登录",
     };
   }
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { presentAccountStatus, presentPlanCredits } from "./UsageDashboard";
+import {
+  presentAccountStatus,
+  presentConnectionDetail,
+  presentPlanCredits,
+} from "./UsageDashboard";
 
 describe("presentAccountStatus", () => {
   it("marks signed-in account data as real while quota remains pending", () => {
@@ -32,6 +36,67 @@ describe("presentAccountStatus", () => {
       detail: "Codex CLI 需要重新登录 OpenAI 账户",
       planDetail: "账户未登录",
     });
+  });
+
+  it("labels retained signed-in account data as stale", () => {
+    expect(
+      presentAccountStatus({
+        state: "signedIn",
+        planType: "pro",
+        accountType: "chatgpt",
+        capturedAtMs: 123,
+        message: "读取账户失败",
+        isStale: true,
+      }),
+    ).toEqual({
+      label: "账户已连接",
+      detail: "账户信息 · 过期缓存",
+      planDetail: "真实套餐 · 过期缓存",
+    });
+  });
+
+  it("does not present a retained signed-out state as current", () => {
+    expect(
+      presentAccountStatus({
+        state: "signedOut",
+        planType: null,
+        accountType: null,
+        capturedAtMs: 123,
+        message: "读取账户失败",
+        isStale: true,
+      }),
+    ).toEqual({
+      label: "账户状态缓存",
+      detail: "过期缓存 · 读取账户失败",
+      planDetail: "账户状态 · 过期缓存",
+    });
+  });
+});
+
+describe("presentConnectionDetail", () => {
+  it("keeps CLI stale visible when account and quota are live", () => {
+    expect(
+      presentConnectionDetail({
+        accountStatus: {
+          state: "signedIn",
+          planType: "pro",
+          accountType: "chatgpt",
+          capturedAtMs: 123,
+          message: "真实账户已连接，套餐 pro",
+        },
+        accountDetail: "真实账户信息 · 额度待同步",
+        cliStatus: {
+          state: "available",
+          executablePath: "/usr/local/bin/codex",
+          version: "0.1.0",
+          message: "Codex CLI 0.1.0 可用",
+          isStale: true,
+        },
+        cliDetail: "v0.1.0 · 实时适配器待接入 · 过期缓存",
+        isLive: true,
+        isStale: false,
+      }),
+    ).toBe("真实账户信息 · 额度实时 · CLI 状态过期");
   });
 });
 

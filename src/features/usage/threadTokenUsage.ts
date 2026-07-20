@@ -24,7 +24,9 @@ export function presentThreadTokenUsage(
     )}`,
     detail: `缓存 ${formatTokenCount(
       status.usage.cachedInputTokens,
-    )} · 推理 ${formatTokenCount(status.usage.reasoningOutputTokens)}`,
+    )} · 推理 ${formatTokenCount(status.usage.reasoningOutputTokens)}${
+      status.isStale ? " · 过期缓存" : ""
+    }`,
     total: formatTokenCount(status.usage.totalTokens),
   };
 }

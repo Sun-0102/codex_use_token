@@ -9,15 +9,15 @@
 | 项目 | 状态 |
 | --- | --- |
 | 当前版本 | `0.1.0` |
-| 当前阶段 | cc-switch 今日真实 Token 统计已接入；代码已发布到 Gitee，等待用户测试 |
-| 当前数据 | 账户状态/套餐来自真实 `account/read`；额度窗口来自真实 `account/rateLimits/read`；今日真实 Token 优先来自本机 `.cc-switch/cc-switch.db` 的 `proxy_request_logs` 数字统计（`input_tokens + output_tokens + cache_creation_tokens`，不重复计算缓存命中）；账户 Token 日桶/累计仍来自真实 `account/usage/read` 作为兜底；当前任务 Token 来自 `thread/tokenUsage/updated`（仅当前连接可见）；连接失败时显示 Demo 或 stale，不标记为实时 |
+| 当前阶段 | T318 统一 10 秒自动刷新已完成并已提交；等待用户测试真实刷新行为 |
+| 当前数据 | 账户状态/套餐来自真实 `account/read`；额度窗口来自真实 `account/rateLimits/read`；今日真实 Token 优先来自本机 `.cc-switch/cc-switch.db` 的 `proxy_request_logs` 数字统计（`input_tokens + output_tokens + cache_creation_tokens`，不重复计算缓存命中）；账户 Token 日桶/累计仍来自真实 `account/usage/read` 作为兜底；当前任务 Token 来自 `thread/tokenUsage/updated`（仅当前连接可见）；全部监控项启动时立即读取并由 Tauri 后台每 10 秒发出刷新节拍，窗口隐藏后继续刷新，上一轮未结束时跳过本轮；连接失败时显示 Demo 或 stale，不标记为实时 |
 | macOS | 菜单栏常驻；原生 NSPanel 浮层；点击外部自动隐藏；托盘定位拿不到 monitor 时降级到右上角显示 |
 | Windows | 托盘入口与 340×82 / 420×510 两种窗口形态已编码，尚未在 Windows 真机验收 |
 | Codex 连接 | 已能探测 CLI 状态、解析所需协议数据、启动/清理 app-server 子进程、进行 JSONL 编解码与请求/响应关联、完成握手，分流通知、处理请求超时、脱敏 stderr，管理异常退出后的退避重连与 shutdown 清理，用模拟 app-server 覆盖关键场景，并通过 `account/read` 读取真实登录状态和套餐、通过 `account/rateLimits/read` 读取所有限额桶并显示真实剩余比例/重置时间，能合并 `account/rateLimits/updated` 稀疏通知，通过 `account/usage/read` 显示真实账户 Token 日桶/累计，通过 cc-switch 本地统计库显示今日真实 Token、缓存命中和请求数，能解析/展示 `thread/tokenUsage/updated` 当前任务 Token 通知，将同一份真实快照同步到菜单栏、收起态和详细面板，并在断开后保留最后快照且标记 stale；真实数据可用后不再显示 Demo 数值 |
 | 下一项任务 | T401：设计 SQLite schema、迁移与数据保留策略 |
 | Git | 已初始化；`master` 跟踪 `origin/master`，远端为用户指定的 Gitee 仓库 |
 
-当前结论：软件框架、悬浮层、CLI 探测、协议类型边界、app-server 子进程生命周期、JSONL 请求/响应通道、初始化握手、通知分流、请求超时、stderr 日志边界、异常退出检测、退避重连、应用退出清理、模拟 app-server 场景覆盖、真实账户状态读取、真实限额桶读取、真实限额显示、稀疏限额通知合并、真实账户 Token 日桶/累计、cc-switch 今日真实 Token 统计、线程级 Token 通知展示、同源快照同步、stale 标记、Demo/实时互斥决策、真实数据面板 UI 验收修复、指标卡裁切修复、可读性优化、菜单栏单周窗口额度同步修复、macOS 面板定位失败兜底、Token 中文单位显示和 Token 口径文案修正已经完成；现在停止开发，等待用户测试真实数据接入。
+当前结论：软件框架、悬浮层、CLI 探测、协议类型边界、app-server 子进程生命周期、JSONL 请求/响应通道、初始化握手、通知分流、请求超时、stderr 日志边界、异常退出检测、退避重连、应用退出清理、模拟 app-server 场景覆盖、真实账户状态读取、真实限额桶读取、真实限额显示、稀疏限额通知合并、真实账户 Token 日桶/累计、cc-switch 今日真实 Token 统计、线程级 Token 通知展示、同源快照同步、stale 标记、Demo/实时互斥决策、统一 10 秒自动刷新与防重叠、真实数据面板 UI 验收修复、指标卡裁切修复、可读性优化、菜单栏单周窗口额度同步修复、macOS 面板定位失败兜底、Token 中文单位显示和 Token 口径文案修正已经完成；现在等待用户测试真实刷新行为。
 
 ## 状态约定
 
@@ -105,6 +105,7 @@ F2 验收：模块可独立测试；应用退出后不产生孤儿进程；日�
 - [x] T315 — 将 Token 大数改为中文单位显示：万、亿，避免用户手动换算 M。
 - [x] T316 — 修正 Token 指标口径文案：`account/usage/read` 的日桶/累计不再标成“今日 Token”，并明确不是 Codex 使用统计页真实消耗口径。
 - [x] T317 — 接入 cc-switch 今日真实 Token 口径：读取 `.cc-switch/cc-switch.db` 的 `proxy_request_logs` 数字统计，显示今日真实 Token、缓存命中、新增输入、输出和请求数。
+- [x] T318 — 将 CLI、账户、额度、账户 Token、cc-switch 今日 Token 和当前任务 Token 统一为启动时立即读取、由 Tauri 后台每 10 秒触发自动刷新；隐藏窗口后继续刷新，整轮请求防重叠，失败后保留最后成功值并标记过期缓存。
 
 F3 验收：界面能显示当前账户真实的限额、重置时间、cc-switch 今日真实 Token 和账户 Token 日桶/累计兜底；数据来源与口径清晰；断开连接不会继续显示“实时”。（已完成，等待用户手工测试）
 
@@ -139,6 +140,7 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、cc-switc
 - 账户限额和账户 Token 汇总可以通过账户接口刷新；`account/usage/read` 当前只按协议暴露账户日桶/累计/日峰值，不等同于 cc-switch 使用统计页的真实消耗 Tokens 口径。
 - 今日真实 Token 依赖本机 cc-switch 数据库：`.cc-switch/cc-switch.db` 的 `proxy_request_logs` 表；只读取数字统计字段，不读取 Codex 登录凭据，不读取请求正文。
 - `thread/tokenUsage/updated` 只保证当前 app-server 连接可见任务的细粒度实时数据；其他 Codex 客户端的活动以账户汇总和限额刷新为准。
+- 当前 10 秒刷新由 Rust 后台线程发出事件并复用既有 IPC，各 Codex 账户读取仍会启动独立的短生命周期 app-server 会话；同一轮并发读取，上一轮尚未结束时跳过下一轮，避免重叠启动。
 - app-server 的部分接口可能随 Codex CLI 版本变化，因此类型必须从实际安装版本生成并做兼容检查。
 - 软件只能调用 Codex 提供的账户数据，不应直接读取、解析或展示登录凭据。
 - Windows 行为目前只有代码与编译层验证，不能标记为真机完成。
@@ -185,6 +187,7 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、cc-switc
 | 2026-07-20 | T315 Token 中文单位 | 使用前端测试覆盖万/亿格式：`23,456 → 2.3万`、`363,885,618 → 3.6亿` |
 | 2026-07-20 | T316 Token 口径文案 | 使用前端测试覆盖账户日桶、最近日桶、账户累计、日峰值和“非统计页”提示；`npm run check` 通过，9 个测试文件、27 个测试通过，TypeScript 与 Vite 构建通过 |
 | 2026-07-20 | T317 cc-switch 今日真实 Token | 使用本机 `.cc-switch/cc-switch.db` 验证 `proxy_request_logs` 口径：`input_tokens` 已包含缓存命中，今日真实 Token 按 `input_tokens + output_tokens + cache_creation_tokens` 计算；前端测试覆盖截图示例 `151,779,617 → 1.5亿`，Rust 测试覆盖不重复计算缓存命中 |
+| 2026-07-20 | T318 统一 10 秒刷新 | `npm run check` 通过：10 个前端测试文件、44 个测试通过，TypeScript 类型检查与 Vite 生产构建通过；`cargo test` 的 70 个 Rust 测试、`cargo fmt --check` 和 Clippy `-D warnings` 通过。前端测试覆盖立即刷新、后台事件触发、防重叠、StrictMode 跨生命周期共享在途请求、异常后继续刷新、成功值保留、过期缓存标记和 CLI stale 在连接卡片可见；Rust 测试锁定后台节拍为 10 秒 |
 | 2026-07-20 | Rust 静态检查 | `cargo fmt --check` 和 `cargo clippy --all-targets -- -D warnings` 通过 |
 | 2026-07-20 | T206 主代理审查 | 按无 Git 项目约束审查 T206 变更；未发现规范或规格遗留问题 |
 | 2026-07-20 | T301 主代理审查 | 按无 Git 项目约束审查 T301 变更；确认只展示真实账户状态/套餐，额度仍标记为 Demo |
@@ -252,3 +255,4 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、cc-switc
 | 2026-07-20 | T315 | 将 Token 数量格式从 M 改为中文单位：万、亿；例如 `363.9M` 改为 `3.6亿`，`23,456` 改为 `2.3万` |
 | 2026-07-20 | T316 | 将面板“今日 Token / 累计 Token”改为“账户日桶 / 账户累计”，并在趋势小字标出“非统计页”，避免与 Codex 设置页 1.52 亿“真实消耗 Tokens”混淆 |
 | 2026-07-20 | T317 | 接入 cc-switch 今日真实 Token：面板优先显示“今日 Token”约亿级真实消耗，并展示缓存命中、新增输入、输出和请求数；`account/usage/read` 日桶只作为兜底 |
+| 2026-07-20 | T318 | 所有监控项改为启动时立即读取并由 Tauri 后台每 10 秒触发刷新；窗口隐藏后继续刷新，慢请求和 StrictMode 首轮不重叠，失败后保留最后成功数据并标记“过期缓存”，连接卡片会保留 CLI 状态过期提示 |

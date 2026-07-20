@@ -7,6 +7,8 @@ use tauri::{
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 
+use crate::monitor_refresh;
+
 #[cfg(target_os = "macos")]
 use tauri_nspanel::{
     CollectionBehavior, ManagerExt, PanelLevel, StyleMask, WebviewWindowExt, tauri_panel,
@@ -93,6 +95,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     tray_builder.build(app)?;
+    monitor_refresh::start_usage_refresh_ticker(app.app_handle().clone())?;
 
     #[cfg(target_os = "windows")]
     if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {

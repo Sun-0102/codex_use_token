@@ -37,4 +37,25 @@ describe("presentThreadTokenUsage", () => {
       total: "—",
     });
   });
+
+  it("labels retained thread usage as stale after a refresh failure", () => {
+    expect(
+      presentThreadTokenUsage({
+        state: "available",
+        capturedAtMs: 123,
+        message: "等待当前任务通知",
+        isStale: true,
+        usage: {
+          inputTokens: 100,
+          cachedInputTokens: 25,
+          outputTokens: 40,
+          reasoningOutputTokens: 9,
+          totalTokens: 174,
+        },
+      }),
+    ).toMatchObject({
+      detail: "缓存 25 · 推理 9 · 过期缓存",
+      total: "174",
+    });
+  });
 });

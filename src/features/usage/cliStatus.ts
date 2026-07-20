@@ -17,37 +17,39 @@ export function presentCliStatus(
     };
   }
 
+  const staleSuffix = status.isStale ? " · 过期缓存" : "";
+
   switch (status.state) {
     case "available":
       return {
         label: "CLI 已就绪",
         detail: status.version
-          ? `v${status.version} · 实时适配器待接入`
-          : "已登录 · 实时适配器待接入",
+          ? `v${status.version} · 实时适配器待接入${staleSuffix}`
+          : `已登录 · 实时适配器待接入${staleSuffix}`,
         tone: "ready",
       };
     case "notInstalled":
       return {
         label: "未检测到 CLI",
-        detail: "请先安装 Codex CLI",
+        detail: `请先安装 Codex CLI${staleSuffix}`,
         tone: "error",
       };
     case "notLoggedIn":
       return {
         label: "CLI 未登录",
-        detail: "请在终端运行 codex login",
+        detail: `请在终端运行 codex login${staleSuffix}`,
         tone: "error",
       };
     case "incompatible":
       return {
         label: "CLI 版本过低",
-        detail: status.message,
+        detail: `${status.message}${staleSuffix}`,
         tone: "error",
       };
     case "launchFailed":
       return {
         label: "CLI 启动失败",
-        detail: status.message,
+        detail: `${status.message}${staleSuffix}`,
         tone: "error",
       };
   }

@@ -79,6 +79,55 @@ describe("presentTokenUsage", () => {
     });
   });
 
+  it("labels retained cc-switch values as stale after a refresh failure", () => {
+    expect(
+      presentTokenUsage(null, {
+        state: "available",
+        capturedAtMs: 456,
+        message: "无法读取 cc-switch 今日 Token 统计",
+        isStale: true,
+        today: {
+          requestCount: 12,
+          inputTokens: 10_000,
+          freshInputTokens: 2_000,
+          outputTokens: 500,
+          cacheReadTokens: 8_000,
+          cacheCreationTokens: 0,
+          totalTokens: 10_500,
+          totalCostUsd: 0,
+        },
+      }),
+    ).toMatchObject({
+      todayTokens: "1.1万",
+      trendDetail: "12 请求 · 过期缓存",
+      isReal: true,
+    });
+  });
+
+  it("labels retained account usage values as stale after a refresh failure", () => {
+    expect(
+      presentTokenUsage({
+        state: "available",
+        capturedAtMs: 123,
+        message: "读取 Codex Token 用量超时",
+        isStale: true,
+        summary: {
+          lifetimeTokens: 20_000,
+          peakDailyTokens: 10_000,
+          longestRunningTurnSec: null,
+          currentStreakDays: null,
+          longestStreakDays: null,
+        },
+        dailyUsageBuckets: [{ startDate: "2026-07-20", tokens: 10_000 }],
+      }),
+    ).toMatchObject({
+      todayTokens: "1万",
+      lifetimeTokens: "2万",
+      trendDetail: "1 天桶 · 过期缓存",
+      isReal: true,
+    });
+  });
+
   it("labels fallback buckets as the latest account bucket, not today", () => {
     expect(
       presentTokenUsage(

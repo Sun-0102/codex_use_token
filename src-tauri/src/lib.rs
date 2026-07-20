@@ -12,6 +12,7 @@ pub mod cc_switch_usage;
 mod cli_probe;
 mod commands;
 mod desktop;
+mod monitor_refresh;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

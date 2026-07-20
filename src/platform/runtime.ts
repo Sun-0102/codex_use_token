@@ -17,6 +17,7 @@ export interface CodexCliStatus {
   executablePath: string | null;
   version: string | null;
   message: string;
+  isStale?: boolean;
 }
 
 export type CodexAccountState = "signedIn" | "signedOut" | "unavailable";
@@ -27,6 +28,7 @@ export interface CodexAccountStatus {
   accountType: string | null;
   capturedAtMs: number;
   message: string;
+  isStale?: boolean;
 }
 
 export type CodexRateLimitsState = "available" | "unavailable";
@@ -83,6 +85,7 @@ export interface CodexUsageStatus {
   summary: CodexUsageSummary | null;
   dailyUsageBuckets: CodexDailyUsageBucket[];
   message: string;
+  isStale?: boolean;
 }
 
 export type CcSwitchUsageState = "available" | "unavailable";
@@ -103,6 +106,7 @@ export interface CcSwitchUsageStatus {
   capturedAtMs: number;
   today: CcSwitchDailyUsage | null;
   message: string;
+  isStale?: boolean;
 }
 
 export type CodexThreadTokenUsageState =
@@ -123,6 +127,7 @@ export interface CodexThreadTokenUsageStatus {
   capturedAtMs: number;
   usage: CodexThreadTokenUsage | null;
   message: string;
+  isStale?: boolean;
 }
 
 export type UsageWindowMode = "compact" | "detailed";

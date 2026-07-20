@@ -20,6 +20,8 @@
 
 关闭面板只会隐藏窗口；只有托盘菜单中的“退出 Codex Reserve”会结束应用。Windows 收起态显示两个配额百分比和微型余量轨，展开态显示重置时间、当前任务 Token、今日真实 Token、缓存命中、套餐和连接状态。macOS 状态栏标题会显示已知的 `5h` 与 `W` 剩余额度；某个窗口缺失时显示 `--`。
 
+应用启动后会立即读取一次监控数据，随后由 Tauri 后台每 10 秒发出统一刷新节拍，刷新 CLI、账户、额度、账户 Token、cc-switch 今日 Token 和当前任务 Token；节拍不依赖窗口可见性，因此隐藏后仍保持相同刷新频率。若上一轮尚未结束，则跳过当前轮次以避免请求重叠；刷新失败时保留最后成功数据并明确标记为过期缓存。
+
 ## 本地开发
 
 前置条件：Node.js、Rust stable、Cargo、macOS Xcode Command Line Tools，以及已登录的 Codex CLI。
@@ -81,6 +83,7 @@ docs/
 - `runtime_health` 只验证前后端 IPC 基线，不访问 Codex。
 - `set_usage_window_mode` 负责在 Windows 收起态和详细态之间安全调整窗口尺寸。
 - `update_tray_usage` 会同步真实或 stale 剩余额度；演示数据不会写入实时托盘标题。
+- 当前 10 秒刷新由 Rust 后台线程提供节拍并复用现有 IPC：各 Codex 账户接口会并发启动独立的短生命周期 app-server 会话；上一轮未结束时不会重复启动下一轮。
 - 历史记录、规划和阈值通知仍在后续任务中。
 
 当前做到哪里、下一步做什么以及历次验证记录，统一维护在 [开发任务清单](docs/IMPLEMENTATION_PLAN.md)。每次完成需求后必须同步更新该文档。

@@ -31,4 +31,20 @@ describe("presentCliStatus", () => {
       tone: "error",
     });
   });
+
+  it("labels retained CLI status as stale", () => {
+    expect(
+      presentCliStatus({
+        state: "available",
+        executablePath: "/test/codex",
+        version: "0.144.5",
+        message: "无法调用本机 CLI 探测服务",
+        isStale: true,
+      }),
+    ).toEqual({
+      label: "CLI 已就绪",
+      detail: "v0.144.5 · 实时适配器待接入 · 过期缓存",
+      tone: "ready",
+    });
+  });
 });

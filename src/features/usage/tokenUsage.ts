@@ -27,7 +27,9 @@ export function presentTokenUsage(
       totalLabel: "缓存命中",
       lifetimeTokens: formatTokenCount(today.cacheReadTokens),
       peakDailyTokens: `新增 ${formatTokenCount(today.freshInputTokens)} · 输出 ${formatTokenCount(today.outputTokens)}`,
-      trendDetail: `${new Intl.NumberFormat("zh-CN").format(today.requestCount)} 请求 · 实时统计`,
+      trendDetail: `${new Intl.NumberFormat("zh-CN").format(today.requestCount)} 请求 · ${
+        ccSwitchStatus.isStale ? "过期缓存" : "实时统计"
+      }`,
       isReal: true,
     };
   }
@@ -62,9 +64,11 @@ export function presentTokenUsage(
     lifetimeTokens: formatOptionalTokenCount(status.summary?.lifetimeTokens),
     peakDailyTokens: `日峰值 ${formatOptionalTokenCount(status.summary?.peakDailyTokens)}`,
     trendDetail:
-      bucketCount === 0
-        ? "account/usage · 非统计页"
-        : `${bucketCount} 天桶 · 非统计页`,
+      status.isStale
+        ? `${bucketCount === 0 ? "account/usage" : `${bucketCount} 天桶`} · 过期缓存`
+        : bucketCount === 0
+          ? "account/usage · 非统计页"
+          : `${bucketCount} 天桶 · 非统计页`,
     isReal: true,
   };
 }
