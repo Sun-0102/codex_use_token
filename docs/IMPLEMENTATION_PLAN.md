@@ -9,13 +9,13 @@
 | 项目 | 状态 |
 | --- | --- |
 | 当前版本 | `0.1.0` |
-| 当前阶段 | cc-switch 今日真实 Token 统计已接入；正在初始化 Git 并发布到 Gitee |
+| 当前阶段 | cc-switch 今日真实 Token 统计已接入；代码已发布到 Gitee，等待用户测试 |
 | 当前数据 | 账户状态/套餐来自真实 `account/read`；额度窗口来自真实 `account/rateLimits/read`；今日真实 Token 优先来自本机 `.cc-switch/cc-switch.db` 的 `proxy_request_logs` 数字统计（`input_tokens + output_tokens + cache_creation_tokens`，不重复计算缓存命中）；账户 Token 日桶/累计仍来自真实 `account/usage/read` 作为兜底；当前任务 Token 来自 `thread/tokenUsage/updated`（仅当前连接可见）；连接失败时显示 Demo 或 stale，不标记为实时 |
 | macOS | 菜单栏常驻；原生 NSPanel 浮层；点击外部自动隐藏；托盘定位拿不到 monitor 时降级到右上角显示 |
 | Windows | 托盘入口与 340×82 / 420×510 两种窗口形态已编码，尚未在 Windows 真机验收 |
 | Codex 连接 | 已能探测 CLI 状态、解析所需协议数据、启动/清理 app-server 子进程、进行 JSONL 编解码与请求/响应关联、完成握手，分流通知、处理请求超时、脱敏 stderr，管理异常退出后的退避重连与 shutdown 清理，用模拟 app-server 覆盖关键场景，并通过 `account/read` 读取真实登录状态和套餐、通过 `account/rateLimits/read` 读取所有限额桶并显示真实剩余比例/重置时间，能合并 `account/rateLimits/updated` 稀疏通知，通过 `account/usage/read` 显示真实账户 Token 日桶/累计，通过 cc-switch 本地统计库显示今日真实 Token、缓存命中和请求数，能解析/展示 `thread/tokenUsage/updated` 当前任务 Token 通知，将同一份真实快照同步到菜单栏、收起态和详细面板，并在断开后保留最后快照且标记 stale；真实数据可用后不再显示 Demo 数值 |
-| 下一项任务 | T016：初始化 Git 仓库并发布到用户指定的 Gitee 仓库 |
-| Git | 已按用户最新授权移除禁用规则；正在首次发布 |
+| 下一项任务 | T401：设计 SQLite schema、迁移与数据保留策略 |
+| Git | 已初始化；`master` 跟踪 `origin/master`，远端为用户指定的 Gitee 仓库 |
 
 当前结论：软件框架、悬浮层、CLI 探测、协议类型边界、app-server 子进程生命周期、JSONL 请求/响应通道、初始化握手、通知分流、请求超时、stderr 日志边界、异常退出检测、退避重连、应用退出清理、模拟 app-server 场景覆盖、真实账户状态读取、真实限额桶读取、真实限额显示、稀疏限额通知合并、真实账户 Token 日桶/累计、cc-switch 今日真实 Token 统计、线程级 Token 通知展示、同源快照同步、stale 标记、Demo/实时互斥决策、真实数据面板 UI 验收修复、指标卡裁切修复、可读性优化、菜单栏单周窗口额度同步修复、macOS 面板定位失败兜底、Token 中文单位显示和 Token 口径文案修正已经完成；现在停止开发，等待用户测试真实数据接入。
 
@@ -45,7 +45,7 @@
 - [x] T013：完成当前视觉重构：双层额度环、建议区、指标卡片和演示状态。
 - [x] T014：锁定 macOS `tauri-nspanel` 依赖到明确提交版本。
 - [x] T015：建立长期开发任务清单和“每次完成需求必须更新文档”的项目级规则。
-- [ ] T016：初始化 Git 仓库，将代码提交并发布到用户指定的 Gitee `master` 分支。（进行中）
+- [x] T016：初始化 Git 仓库，将代码提交并发布到用户指定的 Gitee `master` 分支。
 
 ### R0 — 协议可行性验证
 
@@ -213,9 +213,10 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、cc-switc
 | 2026-07-20 | 类型与构建 | TypeScript、Vite、Clippy、Tauri debug 构建通过 |
 | 2026-07-20 | macOS 运行 | 状态栏应用可启动；NSPanel 初始化未崩溃；实际点击位置由用户截图确认 |
 | 2026-07-20 | 仓库约束 | 已确认项目根目录不存在 `.git` |
-| 2026-07-20 | T016 Git 规则 | 已按用户明确授权移除 `AGENTS.md` 中禁止 Git 操作的规则；等待提交与远端推送验证 |
+| 2026-07-20 | T016 Git 规则 | 已按用户明确授权移除 `AGENTS.md` 中禁止 Git 操作的规则 |
 | 2026-07-20 | T016 提交前验证 | `npm run check` 通过：9 个前端测试文件、28 个测试、TypeScript 与 Vite 构建均成功；`cargo test` 通过：69 个 Rust 测试；`cargo fmt --check` 通过；敏感文件名与常见密钥模式扫描无发现 |
 | 2026-07-20 | T016 远端检查 | Gitee `origin` 可访问且 `git ls-remote --heads origin` 未返回分支，适合执行首次推送 |
+| 2026-07-20 | T016 首次发布 | 根提交 `010d21a` 已成功推送到 Gitee `master`；本地 `master` 已设置为跟踪 `origin/master` |
 
 ## 更新日志
 
@@ -225,7 +226,7 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、cc-switc
 | 2026-07-20 | T009–T014 | macOS 改为原生 NSPanel，修复首次点击定位并完成视觉重构 |
 | 2026-07-20 | R001–R005 | 使用本机 Codex Schema 确认真实限额与 Token 数据接口 |
 | 2026-07-20 | T015 | 将实施计划升级为长期任务清单，并固定每次需求完成后的更新规则 |
-| 2026-07-20 | T016 | 按用户最新授权移除项目的 Git 禁用规则，开始向指定 Gitee 仓库首次发布 |
+| 2026-07-20 | T016 | 按用户最新授权移除项目的 Git 禁用规则，初始化仓库并将完整项目发布到指定 Gitee `master` 分支 |
 | 2026-07-20 | T101 | 增加 CLI 路径发现、版本兼容、登录状态和启动失败分类，并在界面显示可操作状态 |
 | 2026-07-20 | T102 | 固化 app-server 0.144.5 最小 Schema、合成夹具和 Rust 类型，兼容缺失字段、未知套餐、多限额桶与空 Credits |
 | 2026-07-20 | T201 | 增加 app-server 会话模块，可启动 `codex app-server --stdio`、接管标准流、记录退出状态，并在显式停止或 Drop 时清理子进程 |
