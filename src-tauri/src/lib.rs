@@ -1,4 +1,5 @@
 pub mod app_server_account;
+pub mod app_server_client;
 pub mod app_server_connection;
 pub mod app_server_handshake;
 pub mod app_server_jsonl;
@@ -22,6 +23,7 @@ pub fn run() {
     let builder = builder.plugin(tauri_nspanel::init());
 
     builder
+        .manage(app_server_client::AppServerRuntime::default())
         .setup(desktop::setup)
         .on_window_event(desktop::handle_window_event)
         .invoke_handler(tauri::generate_handler![

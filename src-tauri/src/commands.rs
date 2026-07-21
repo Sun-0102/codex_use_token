@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use crate::{
-    app_server_account, app_server_rate_limits, app_server_thread_usage, app_server_usage,
-    cc_switch_usage, cli_probe, desktop,
+    app_server_account, app_server_client::AppServerRuntime, app_server_rate_limits,
+    app_server_thread_usage, app_server_usage, cc_switch_usage, cli_probe, desktop,
 };
 use serde::Serialize;
 
@@ -40,47 +40,36 @@ pub async fn codex_cli_status() -> cli_probe::CodexCliStatus {
 }
 
 #[tauri::command]
-pub async fn codex_account_status() -> app_server_account::CodexAccountStatus {
-    tauri::async_runtime::spawn_blocking(|| {
-        app_server_account::read_codex_account_status(Duration::from_secs(8))
-    })
-    .await
-    .unwrap_or_else(|_| app_server_account::CodexAccountStatus {
-        state: app_server_account::CodexAccountState::Unavailable,
-        plan_type: None,
-        account_type: None,
-        captured_at_ms: 0,
-        message: "Codex 账户读取任务异常退出".to_string(),
-    })
+pub fn codex_account_status(
+    runtime: tauri::State<'_, AppServerRuntime>,
+) -> app_server_account::CodexAccountStatus {
+    let client = runtime.client();
+    client
+        .lock()
+        .expect("app-server runtime lock")
+        .read_account_status(Duration::from_secs(8))
 }
 
 #[tauri::command]
-pub async fn codex_rate_limits_status() -> app_server_rate_limits::CodexRateLimitsStatus {
-    tauri::async_runtime::spawn_blocking(|| {
-        app_server_rate_limits::read_codex_rate_limits_status(Duration::from_secs(8))
-    })
-    .await
-    .unwrap_or_else(|_| app_server_rate_limits::CodexRateLimitsStatus {
-        state: app_server_rate_limits::CodexRateLimitsState::Unavailable,
-        captured_at_ms: 0,
-        buckets: Vec::new(),
-        message: "Codex 限额读取任务异常退出".to_string(),
-    })
+pub fn codex_rate_limits_status(
+    runtime: tauri::State<'_, AppServerRuntime>,
+) -> app_server_rate_limits::CodexRateLimitsStatus {
+    let client = runtime.client();
+    client
+        .lock()
+        .expect("app-server runtime lock")
+        .read_rate_limits_status(Duration::from_secs(8))
 }
 
 #[tauri::command]
-pub async fn codex_usage_status() -> app_server_usage::CodexUsageStatus {
-    tauri::async_runtime::spawn_blocking(|| {
-        app_server_usage::read_codex_usage_status(Duration::from_secs(8))
-    })
-    .await
-    .unwrap_or_else(|_| app_server_usage::CodexUsageStatus {
-        state: app_server_usage::CodexUsageState::Unavailable,
-        captured_at_ms: 0,
-        summary: None,
-        daily_usage_buckets: Vec::new(),
-        message: "Codex Token 用量读取任务异常退出".to_string(),
-    })
+pub fn codex_usage_status(
+    runtime: tauri::State<'_, AppServerRuntime>,
+) -> app_server_usage::CodexUsageStatus {
+    let client = runtime.client();
+    client
+        .lock()
+        .expect("app-server runtime lock")
+        .read_usage_status(Duration::from_secs(8))
 }
 
 #[tauri::command]
@@ -96,21 +85,14 @@ pub async fn cc_switch_usage_status() -> cc_switch_usage::CcSwitchUsageStatus {
 }
 
 #[tauri::command]
-pub async fn codex_thread_token_usage_status()
--> app_server_thread_usage::CodexThreadTokenUsageStatus {
-    tauri::async_runtime::spawn_blocking(|| {
-        app_server_thread_usage::read_codex_thread_token_usage_status(
-            Duration::from_secs(8),
-            Duration::from_millis(500),
-        )
-    })
-    .await
-    .unwrap_or_else(|_| app_server_thread_usage::CodexThreadTokenUsageStatus {
-        state: app_server_thread_usage::CodexThreadTokenUsageState::Unavailable,
-        captured_at_ms: 0,
-        usage: None,
-        message: "Codex 线程 Token 通知读取任务异常退出".to_string(),
-    })
+pub fn codex_thread_token_usage_status(
+    runtime: tauri::State<'_, AppServerRuntime>,
+) -> app_server_thread_usage::CodexThreadTokenUsageStatus {
+    let client = runtime.client();
+    client
+        .lock()
+        .expect("app-server runtime lock")
+        .read_thread_token_usage_status(Duration::from_secs(8), Duration::from_millis(500))
 }
 
 #[tauri::command]

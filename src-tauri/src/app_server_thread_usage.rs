@@ -61,7 +61,7 @@ struct RawThreadTokenUsage {
 }
 
 impl CodexThreadTokenUsageStatus {
-    fn waiting(captured_at_ms: u64) -> Self {
+    pub(crate) fn waiting(captured_at_ms: u64) -> Self {
         Self {
             state: CodexThreadTokenUsageState::Waiting,
             captured_at_ms,
@@ -70,7 +70,7 @@ impl CodexThreadTokenUsageStatus {
         }
     }
 
-    fn unavailable(message: impl Into<String>, captured_at_ms: u64) -> Self {
+    pub(crate) fn unavailable(message: impl Into<String>, captured_at_ms: u64) -> Self {
         Self {
             state: CodexThreadTokenUsageState::Unavailable,
             captured_at_ms,
@@ -156,7 +156,7 @@ pub fn thread_token_usage_status_from_notification(
     })
 }
 
-fn safe_thread_usage_error_message(error: &JsonlError) -> String {
+pub(crate) fn safe_thread_usage_error_message(error: &JsonlError) -> String {
     match error {
         JsonlError::Timeout { .. } => "等待 Codex 线程 Token 通知超时".to_string(),
         JsonlError::EndOfStream => "Codex app-server 已关闭连接".to_string(),

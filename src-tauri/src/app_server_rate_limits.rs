@@ -130,7 +130,17 @@ where
     W: Write,
 {
     perform_initialize_handshake_with_timeout(connection, timeout)?;
+    read_rate_limits_from_initialized_connection(connection, timeout, captured_at_ms)
+}
 
+pub(crate) fn read_rate_limits_from_initialized_connection<W>(
+    connection: &mut AppServerConnection<W>,
+    timeout: Duration,
+    captured_at_ms: u64,
+) -> Result<CodexRateLimitsStatus, JsonlError>
+where
+    W: Write,
+{
     let response = connection.request(
         method::ACCOUNT_RATE_LIMITS_READ,
         Option::<()>::None,
@@ -317,7 +327,7 @@ fn credits_from_snapshot(credits: CreditsSnapshot) -> CodexCreditsSnapshot {
     }
 }
 
-fn safe_rate_limits_error_message(error: &JsonlError) -> String {
+pub(crate) fn safe_rate_limits_error_message(error: &JsonlError) -> String {
     match error {
         JsonlError::Timeout { .. } => "读取 Codex 限额超时".to_string(),
         JsonlError::EndOfStream => "Codex app-server 已关闭连接".to_string(),
