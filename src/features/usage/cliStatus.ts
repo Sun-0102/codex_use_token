@@ -18,6 +18,7 @@ export function presentCliStatus(
   }
 
   const staleSuffix = status.isStale ? " · 过期缓存" : "";
+  const pathSuffix = status.executablePath ? ` · ${status.executablePath}` : "";
 
   switch (status.state) {
     case "available":
@@ -31,7 +32,7 @@ export function presentCliStatus(
     case "notInstalled":
       return {
         label: "未检测到 CLI",
-        detail: `请先安装 Codex CLI${staleSuffix}`,
+        detail: `已检查 PATH、nvm、fnm、asdf 和 Homebrew${staleSuffix}`,
         tone: "error",
       };
     case "notLoggedIn":
@@ -49,7 +50,7 @@ export function presentCliStatus(
     case "launchFailed":
       return {
         label: "CLI 启动失败",
-        detail: `${status.message}${staleSuffix}`,
+        detail: `${status.message}${pathSuffix}${staleSuffix}`,
         tone: "error",
       };
   }

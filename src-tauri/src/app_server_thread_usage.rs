@@ -100,8 +100,8 @@ fn read_thread_token_usage_from_codex(
     wait_timeout: Duration,
     captured_at_ms: u64,
 ) -> Result<CodexThreadTokenUsageStatus, JsonlError> {
-    let mut session =
-        AppServerSession::start(AppServerCommand::codex()).map_err(JsonlError::from)?;
+    let mut session = AppServerSession::start(AppServerCommand::codex_from_environment())
+        .map_err(JsonlError::from)?;
     let mut connection =
         AppServerConnection::from_session(&mut session).map_err(JsonlError::from)?;
 

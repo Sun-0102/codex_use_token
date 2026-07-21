@@ -1,6 +1,6 @@
 # Codex Reserve
 
-一个基于 Tauri 2 的本地 Codex 用量监控与规划工具。产品采用“状态栏优先”：macOS 常驻菜单栏，Windows 提供置顶悬浮窗和系统托盘入口。桌面壳层、紧凑用量面板、领域模型、IPC 基线、Codex CLI 探测、app-server 子进程生命周期、JSONL 通道、initialize 握手、真实账户/额度数据展示和 cc-switch 今日真实 Token 统计已经建立。
+一个基于 Tauri 2 的本地 Codex 用量监控与规划工具。产品采用“状态栏优先”：macOS 常驻菜单栏，Windows 提供置顶悬浮窗和系统托盘入口。桌面壳层、紧凑用量面板、领域模型、IPC 基线、Codex CLI 探测、app-server 子进程生命周期、JSONL 通道、initialize 握手、真实账户/额度数据展示、cc-switch 今日真实 Token 统计和安装版 CLI 路径解析已经建立。
 
 > 本项目不是 OpenAI 官方产品。应用不会复制或直接读取 Codex 登录凭据；通过本机 `codex app-server` 的标准输入输出协议获取当前登录账户可见的限额信息，并可从本机 cc-switch 数据库读取纯数字用量统计。
 
@@ -76,7 +76,7 @@ docs/
 
 - UI 会明确区分实时、过期缓存和演示数据。
 - macOS 主窗口已转换为非激活式原生 NSPanel；优先显示在状态栏图标下方，取不到 monitor 时降级到右上角但仍会显示。
-- 应用会执行 `codex --version` 和 `codex login status` 检测 CLI，但不会读取或展示登录凭据。
+- 应用会执行 `codex --version` 和 `codex login status` 检测 CLI，但不会读取或展示登录凭据；安装版会额外检查 `PATH`、nvm、fnm、asdf、Homebrew 和登录 shell 解析到的 `codex` 路径。
 - Rust 侧已能启动并清理 `codex app-server --stdio` 子进程，完成 JSONL 请求/响应关联和 `initialize` / `initialized` 握手，并通过 `account/read`、`account/rateLimits/read`、`account/usage/read` 读取真实账户、额度和账户 Token 汇总。
 - 今日真实 Token 优先读取 `.cc-switch/cc-switch.db` 的 `proxy_request_logs` 数字统计，按 `input_tokens + output_tokens + cache_creation_tokens` 计算；`input_tokens` 已包含缓存命中，因此不会再次叠加 `cache_read_tokens`。
 - `account/usage/read` 当前展示的是账户接口日桶/累计/日峰值，不等同于 cc-switch 使用统计页的“真实消耗 Tokens”口径；该数据只作为 cc-switch 不可用时的兜底。

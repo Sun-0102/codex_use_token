@@ -74,8 +74,8 @@ fn read_usage_from_codex(
     timeout: Duration,
     captured_at_ms: u64,
 ) -> Result<CodexUsageStatus, JsonlError> {
-    let mut session =
-        AppServerSession::start(AppServerCommand::codex()).map_err(JsonlError::from)?;
+    let mut session = AppServerSession::start(AppServerCommand::codex_from_environment())
+        .map_err(JsonlError::from)?;
     let mut connection =
         AppServerConnection::from_session(&mut session).map_err(JsonlError::from)?;
 

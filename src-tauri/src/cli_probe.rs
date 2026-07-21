@@ -164,8 +164,11 @@ fn probe_executable(executable: &Path, runner: &impl CommandRunner) -> CodexCliS
     }
 }
 
-fn discover_codex_executable() -> Option<PathBuf> {
-    candidate_paths().into_iter().find(|path| path.is_file())
+pub(crate) fn discover_codex_executable() -> Option<PathBuf> {
+    candidate_paths()
+        .into_iter()
+        .find(|path| path.is_file())
+        .or_else(discover_codex_from_login_shell)
 }
 
 fn candidate_paths() -> Vec<PathBuf> {
@@ -189,19 +192,35 @@ fn candidate_paths() -> Vec<PathBuf> {
     }
 
     if let Some(home_directory) = env::var_os("HOME").map(PathBuf::from) {
-        for relative_path in [".local/bin/codex", ".volta/bin/codex", ".cargo/bin/codex"] {
+        for relative_path in [
+            ".local/bin/codex",
+            ".volta/bin/codex",
+            ".cargo/bin/codex",
+            ".asdf/shims/codex",
+        ] {
             candidates.push(home_directory.join(relative_path));
         }
 
         let nvm_versions = home_directory.join(".nvm/versions/node");
-        if let Ok(entries) = fs::read_dir(nvm_versions) {
-            let mut nvm_candidates = entries
-                .filter_map(Result::ok)
-                .map(|entry| entry.path().join("bin/codex"))
-                .collect::<Vec<_>>();
-            nvm_candidates.sort_by(|left, right| right.cmp(left));
-            candidates.extend(nvm_candidates);
-        }
+        candidates.extend(node_version_manager_candidates(&nvm_versions, "bin/codex"));
+
+        let fnm_versions = home_directory.join(".fnm/node-versions");
+        candidates.extend(node_version_manager_candidates(
+            &fnm_versions,
+            "installation/bin/codex",
+        ));
+
+        let xdg_fnm_versions = home_directory.join(".local/share/fnm/node-versions");
+        candidates.extend(node_version_manager_candidates(
+            &xdg_fnm_versions,
+            "installation/bin/codex",
+        ));
+
+        let asdf_node_installs = home_directory.join(".asdf/installs/nodejs");
+        candidates.extend(node_version_manager_candidates(
+            &asdf_node_installs,
+            "bin/codex",
+        ));
     }
 
     for directory in ["/opt/homebrew/bin", "/usr/local/bin"] {
@@ -211,6 +230,58 @@ fn candidate_paths() -> Vec<PathBuf> {
     let mut seen = HashSet::new();
     candidates.retain(|candidate| seen.insert(candidate.clone()));
     candidates
+}
+
+fn node_version_manager_candidates(root: &Path, relative_codex_path: &str) -> Vec<PathBuf> {
+    let Ok(entries) = fs::read_dir(root) else {
+        return Vec::new();
+    };
+
+    let mut candidates = entries
+        .filter_map(Result::ok)
+        .map(|entry| entry.path().join(relative_codex_path))
+        .collect::<Vec<_>>();
+    candidates.sort_by(|left, right| right.cmp(left));
+    candidates
+}
+
+fn discover_codex_from_login_shell() -> Option<PathBuf> {
+    #[cfg(not(target_os = "windows"))]
+    {
+        let mut shells = Vec::new();
+        if let Some(shell) = env::var_os("SHELL") {
+            shells.push(PathBuf::from(shell));
+        }
+        shells.extend([PathBuf::from("/bin/zsh"), PathBuf::from("/bin/bash")]);
+
+        let mut seen = HashSet::new();
+        for shell in shells
+            .into_iter()
+            .filter(|shell| seen.insert(shell.clone()))
+        {
+            let Ok(output) = Command::new(shell)
+                .args(["-lc", "command -v codex"])
+                .output()
+            else {
+                continue;
+            };
+
+            if !output.status.success() {
+                continue;
+            }
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let Some(path) = stdout.lines().map(str::trim).find(|line| !line.is_empty()) else {
+                continue;
+            };
+            let candidate = PathBuf::from(path);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    None
 }
 
 fn parse_cli_version(output: &str) -> Option<CliVersion> {
@@ -268,6 +339,16 @@ mod tests {
         })
     }
 
+    fn unique_probe_dir(name: &str) -> PathBuf {
+        let mut path = env::temp_dir();
+        path.push(format!(
+            "codex-reserve-cli-probe-{}-{}",
+            name,
+            std::process::id()
+        ));
+        path
+    }
+
     fn failure(stderr: &str) -> io::Result<CommandResult> {
         Ok(CommandResult {
             success: false,
@@ -286,6 +367,26 @@ mod tests {
             parse_cli_version("codex v1.2.3-beta.1"),
             Some(CliVersion::new(1, 2, 3))
         );
+    }
+
+    #[test]
+    fn discovers_node_version_manager_candidates_newest_first() {
+        let root = unique_probe_dir("node-versions");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("v20.0.0/bin")).expect("create old node bin");
+        fs::create_dir_all(root.join("v24.18.0/bin")).expect("create new node bin");
+
+        let candidates = node_version_manager_candidates(&root, "bin/codex");
+
+        assert_eq!(
+            candidates,
+            vec![
+                root.join("v24.18.0/bin/codex"),
+                root.join("v20.0.0/bin/codex")
+            ]
+        );
+
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]

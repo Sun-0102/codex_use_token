@@ -6,6 +6,8 @@ use std::{
     process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus, Stdio},
 };
 
+use crate::cli_probe;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppServerCommand {
     executable: PathBuf,
@@ -15,6 +17,13 @@ pub struct AppServerCommand {
 impl AppServerCommand {
     pub fn codex() -> Self {
         Self::new("codex").with_args(["app-server", "--stdio"])
+    }
+
+    pub fn codex_from_environment() -> Self {
+        let executable =
+            cli_probe::discover_codex_executable().unwrap_or_else(|| PathBuf::from("codex"));
+
+        Self::new(executable).with_args(["app-server", "--stdio"])
     }
 
     pub fn new(executable: impl Into<PathBuf>) -> Self {
