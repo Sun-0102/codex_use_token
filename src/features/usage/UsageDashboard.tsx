@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type {
   CodexAccountStatus,
   CodexCliStatus,
-  CcSwitchUsageStatus,
+  CodexSessionUsageStatus,
   CodexThreadTokenUsageStatus,
   CodexUsageStatus,
   UsageWindowMode,
@@ -22,7 +22,7 @@ interface UsageDashboardProps {
   cliStatus: CodexCliStatus | null;
   accountStatus: CodexAccountStatus | null;
   usageStatus: CodexUsageStatus | null;
-  ccSwitchUsageStatus: CcSwitchUsageStatus | null;
+  sessionUsageStatus: CodexSessionUsageStatus | null;
   threadTokenUsageStatus: CodexThreadTokenUsageStatus | null;
   mode: UsageWindowMode;
   canCollapse: boolean;
@@ -162,7 +162,7 @@ export function UsageDashboard({
   cliStatus,
   accountStatus,
   usageStatus,
-  ccSwitchUsageStatus,
+  sessionUsageStatus,
   threadTokenUsageStatus,
   mode,
   canCollapse,
@@ -177,7 +177,7 @@ export function UsageDashboard({
   const isStale = snapshot.source === "stale";
   const cliPresentation = presentCliStatus(cliStatus);
   const accountPresentation = presentAccountStatus(accountStatus);
-  const tokenUsage = presentTokenUsage(usageStatus, ccSwitchUsageStatus);
+  const tokenUsage = presentTokenUsage(usageStatus, sessionUsageStatus);
   const threadTokenUsage = presentThreadTokenUsage(threadTokenUsageStatus);
   const planCredits = presentPlanCredits(accountStatus, snapshot);
   const connectionDetail = presentConnectionDetail({

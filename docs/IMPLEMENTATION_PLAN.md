@@ -1,6 +1,6 @@
 # Codex Reserve 开发任务清单
 
-最后更新：2026-07-21
+最后更新：2026-07-24
 
 > 本文档是项目进度的唯一事实来源。每次新增、修改或完成需求后，都必须同步更新“当前状态”“任务清单”“验证记录”和“更新日志”。
 
@@ -9,15 +9,15 @@
 | 项目 | 状态 |
 | --- | --- |
 | 当前版本 | `0.1.0` |
-| 当前阶段 | T320 应用级 app-server 长连接已完成；等待用户重新打包安装验证刷新稳定性 |
-| 当前数据 | 账户状态/套餐来自真实 `account/read`；额度窗口来自真实 `account/rateLimits/read`；今日真实 Token 优先来自本机 `.cc-switch/cc-switch.db` 的 `proxy_request_logs` 数字统计（`input_tokens + output_tokens + cache_creation_tokens`，不重复计算缓存命中）；账户 Token 日桶/累计仍来自真实 `account/usage/read` 作为兜底；当前任务 Token 来自同一个应用级 app-server 长连接接收的 `thread/tokenUsage/updated`（仅当前连接可见）；全部监控项启动时立即读取并由 Tauri 后台每 10 秒发出刷新节拍，窗口隐藏后继续刷新，上一轮未结束时跳过本轮；安装版会解析 PATH、nvm、fnm、asdf、Homebrew 和登录 shell 中的 Codex CLI 路径；账户、额度、账户 Token 和当前任务 Token 复用一个 `codex app-server --stdio` 长连接；连接失败时显示 Demo 或 stale，不标记为实时 |
+| 当前阶段 | T321 Codex 本地会话 Token 统计已完成；等待用户重新打包安装验证数据与刷新稳定性 |
+| 当前数据 | 账户状态/套餐来自真实 `account/read`；额度窗口来自真实 `account/rateLimits/read`；今日真实 Token 直接来自 `$CODEX_HOME/sessions`（默认 `~/.codex/sessions`）和 `archived_sessions` 的 `event_msg/token_count` 数字事件，按累计快照差值还原请求并以 `input_tokens + output_tokens` 统计，不依赖 cc-switch；账户 Token 日桶/累计仍来自真实 `account/usage/read` 作为兜底；当前任务 Token 来自同一个应用级 app-server 长连接接收的 `thread/tokenUsage/updated`（仅当前连接可见）；全部监控项启动时立即读取并由 Tauri 后台每 10 秒发出刷新节拍，窗口隐藏后继续刷新，上一轮未结束时跳过本轮；安装版会解析 PATH、nvm、fnm、asdf、Homebrew 和登录 shell 中的 Codex CLI 路径；账户、额度、账户 Token 和当前任务 Token 复用一个 `codex app-server --stdio` 长连接；连接失败时显示 Demo 或 stale，不标记为实时 |
 | macOS | 菜单栏常驻；原生 NSPanel 浮层；点击外部自动隐藏；托盘定位拿不到 monitor 时降级到右上角显示 |
 | Windows | 托盘入口与 340×82 / 420×510 两种窗口形态已编码，尚未在 Windows 真机验收 |
-| Codex 连接 | 已能探测 CLI 状态、解析所需协议数据、启动/清理应用级 app-server 长连接、进行 JSONL 编解码与请求/响应关联、完成一次性握手，分流通知、处理请求超时、脱敏 stderr，管理异常退出后的重建与 shutdown 清理，用模拟 app-server 覆盖关键场景，并通过 `account/read` 读取真实登录状态和套餐、通过 `account/rateLimits/read` 读取所有限额桶并显示真实剩余比例/重置时间，能合并 `account/rateLimits/updated` 稀疏通知，通过 `account/usage/read` 显示真实账户 Token 日桶/累计，通过 cc-switch 本地统计库显示今日真实 Token、缓存命中和请求数，能解析/展示 `thread/tokenUsage/updated` 当前任务 Token 通知，将同一份真实快照同步到菜单栏、收起态和详细面板，并在断开后保留最后快照且标记 stale；真实数据可用后不再显示 Demo 数值 |
+| Codex 连接 | 已能探测 CLI 状态、解析所需协议数据、启动/清理应用级 app-server 长连接、进行 JSONL 编解码与请求/响应关联、完成一次性握手，分流通知、处理请求超时、脱敏 stderr，管理异常退出后的重建与 shutdown 清理，用模拟 app-server 覆盖关键场景，并通过 `account/read` 读取真实登录状态和套餐、通过 `account/rateLimits/read` 读取所有限额桶并显示真实剩余比例/重置时间，能合并 `account/rateLimits/updated` 稀疏通知，通过 `account/usage/read` 显示真实账户 Token 日桶/累计，直接解析 Codex 本地会话 JSONL 显示今日真实 Token、缓存命中和请求数，能解析/展示 `thread/tokenUsage/updated` 当前任务 Token 通知，将同一份真实快照同步到菜单栏、收起态和详细面板，并在断开后保留最后快照且标记 stale；真实数据可用后不再显示 Demo 数值 |
 | 下一项任务 | T401：设计 SQLite schema、迁移与数据保留策略 |
 | Git | 已初始化；`master` 跟踪 `origin/master`，远端为用户指定的 Gitee 仓库 |
 
-当前结论：软件框架、悬浮层、CLI 探测、协议类型边界、app-server 子进程生命周期、应用级 app-server 长连接、JSONL 请求/响应通道、初始化握手、通知分流、请求超时、stderr 日志边界、异常退出检测、重建与应用退出清理、模拟 app-server 场景覆盖、真实账户状态读取、真实限额桶读取、真实限额显示、稀疏限额通知合并、真实账户 Token 日桶/累计、cc-switch 今日真实 Token 统计、线程级 Token 通知展示、同源快照同步、stale 标记、Demo/实时互斥决策、统一 10 秒自动刷新与防重叠、安装版 CLI 路径解析、真实数据面板 UI 验收修复、指标卡裁切修复、可读性优化、菜单栏单周窗口额度同步修复、macOS 面板定位失败兜底、Token 中文单位显示和 Token 口径文案修正已经完成；现在等待用户重新打包安装验证刷新稳定性。
+当前结论：软件框架、悬浮层、CLI 探测、协议类型边界、app-server 子进程生命周期、应用级 app-server 长连接、JSONL 请求/响应通道、初始化握手、通知分流、请求超时、stderr 日志边界、异常退出检测、重建与应用退出清理、模拟 app-server 场景覆盖、真实账户状态读取、真实限额桶读取、真实限额显示、稀疏限额通知合并、真实账户 Token 日桶/累计、Codex 本地会话今日 Token 统计、线程级 Token 通知展示、同源快照同步、stale 标记、Demo/实时互斥决策、统一 10 秒自动刷新与防重叠、安装版 CLI 路径解析、真实数据面板 UI 验收修复、指标卡裁切修复、可读性优化、菜单栏单周窗口额度同步修复、macOS 面板定位失败兜底、Token 中文单位显示和 Token 口径文案修正已经完成；现在等待用户重新打包安装验证数据与刷新稳定性。
 
 ## 状态约定
 
@@ -104,12 +104,13 @@ F2 验收：模块可独立测试；应用退出后不产生孤儿进程；日�
 - [x] T314 — 修复 macOS 面板托盘定位失败后不显示：`No monitor found` 时降级定位但继续显示 NSPanel。
 - [x] T315 — 将 Token 大数改为中文单位显示：万、亿，避免用户手动换算 M。
 - [x] T316 — 修正 Token 指标口径文案：`account/usage/read` 的日桶/累计不再标成“今日 Token”，并明确不是 Codex 使用统计页真实消耗口径。
-- [x] T317 — 接入 cc-switch 今日真实 Token 口径：读取 `.cc-switch/cc-switch.db` 的 `proxy_request_logs` 数字统计，显示今日真实 Token、缓存命中、新增输入、输出和请求数。
-- [x] T318 — 将 CLI、账户、额度、账户 Token、cc-switch 今日 Token 和当前任务 Token 统一为启动时立即读取、由 Tauri 后台每 10 秒触发自动刷新；隐藏窗口后继续刷新，整轮请求防重叠，失败后保留最后成功值并标记过期缓存。
+- [x] T317 — 接入 cc-switch 今日真实 Token 口径：读取 `.cc-switch/cc-switch.db` 的 `proxy_request_logs` 数字统计，显示今日真实 Token、缓存命中、新增输入、输出和请求数。（数据源已由 T321 替换）
+- [x] T318 — 将 CLI、账户、额度、账户 Token、今日 Token 和当前任务 Token 统一为启动时立即读取、由 Tauri 后台每 10 秒触发自动刷新；隐藏窗口后继续刷新，整轮请求防重叠，失败后保留最后成功值并标记过期缓存。
 - [x] T319 — 修复安装版 macOS App 找不到 nvm/fnm/asdf 下 Codex CLI 的问题：CLI 探测和 app-server 启动共用解析到的绝对路径，失败时显示更明确的 CLI 诊断文案。
 - [x] T320 — 将账户、额度、账户 Token 和当前任务 Token 改为复用同一个应用级 `codex app-server --stdio` 长连接，启动后只握手一次，连接不可用时重建，降低 10 秒刷新中的短进程启动抖动。
+- [x] T321 — 移除今日 Token 对 cc-switch SQLite 的依赖，直接解析 Codex `sessions` 与 `archived_sessions` JSONL 中的 `event_msg/token_count` 数字事件，以累计差值还原今日请求；不解析、保存或展示消息正文，不读取登录凭据。
 
-F3 验收：界面能显示当前账户真实的限额、重置时间、cc-switch 今日真实 Token 和账户 Token 日桶/累计兜底；数据来源与口径清晰；断开连接不会继续显示“实时”。（已完成，等待用户手工测试）
+F3 验收：界面能显示当前账户真实的限额、重置时间、Codex 本地会话今日真实 Token 和账户 Token 日桶/累计兜底；数据来源与口径清晰；断开连接不会继续显示“实时”。（已完成，等待用户手工测试）
 
 ## 后续任务
 
@@ -139,8 +140,9 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、cc-switc
 
 ## 已知边界
 
-- 账户限额和账户 Token 汇总可以通过账户接口刷新；`account/usage/read` 当前只按协议暴露账户日桶/累计/日峰值，不等同于 cc-switch 使用统计页的真实消耗 Tokens 口径。
-- 今日真实 Token 依赖本机 cc-switch 数据库：`.cc-switch/cc-switch.db` 的 `proxy_request_logs` 表；只读取数字统计字段，不读取 Codex 登录凭据，不读取请求正文。
+- 账户限额和账户 Token 汇总可以通过账户接口刷新；`account/usage/read` 当前只按协议暴露账户日桶/累计/日峰值，不等同于本地会话逐请求统计口径。
+- 今日真实 Token 读取 `$CODEX_HOME/sessions`（默认 `~/.codex/sessions`）和 `archived_sessions` 中与今天有关的 JSONL；只解析时间戳和 `event_msg/token_count` 数字字段，不读取 Codex 登录凭据，不解析、保存或展示消息正文。
+- Codex 的 `input_tokens` 已包含 `cached_input_tokens`，因此今日总量按 `input_tokens + output_tokens` 计算；缓存命中只用于拆分新增输入，不重复叠加。
 - `thread/tokenUsage/updated` 只保证当前 app-server 连接可见任务的细粒度实时数据；其他 Codex 客户端的活动以账户汇总和限额刷新为准。
 - 当前 10 秒刷新由 Rust 后台线程发出事件并复用既有 IPC；Codex 账户、额度、账户 Token 和当前任务 Token 复用同一个应用级 app-server 长连接并串行发送请求，上一轮尚未结束时跳过下一轮，避免重叠启动。
 - 安装版 macOS App 不继承终端的 nvm PATH；CLI 解析会检查显式 `CODEX_CLI_PATH`、进程 PATH、`~/.local/bin`、Volta、Cargo、asdf、nvm、fnm、Homebrew，以及登录 shell 返回的 `codex` 路径；app-server 会使用同一个绝对路径启动。
@@ -193,6 +195,7 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、cc-switc
 | 2026-07-20 | T318 统一 10 秒刷新 | `npm run check` 通过：10 个前端测试文件、44 个测试通过，TypeScript 类型检查与 Vite 生产构建通过；`cargo test` 的 70 个 Rust 测试、`cargo fmt --check` 和 Clippy `-D warnings` 通过。前端测试覆盖立即刷新、后台事件触发、防重叠、StrictMode 跨生命周期共享在途请求、异常后继续刷新、成功值保留、过期缓存标记和 CLI stale 在连接卡片可见；Rust 测试锁定后台节拍为 10 秒 |
 | 2026-07-21 | T319 安装版 CLI 路径解析 | `npm run check` 通过：10 个前端测试文件、46 个测试通过，TypeScript 类型检查与 Vite 生产构建通过；`cargo test` 通过：71 个 Rust 测试通过；`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`、`npm run tauri -- build --debug --no-bundle` 和 `git diff --check` 通过。测试覆盖 nvm/fnm/asdf 候选路径排序和 CLI 诊断文案 |
 | 2026-07-21 | T320 app-server 长连接 | `cargo test` 通过：72 个 Rust 测试通过，新增测试覆盖账户读取和限额读取复用同一个 fake app-server 进程；`npm run check` 通过：10 个前端测试文件、46 个测试通过；`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`、`npm run tauri -- build --debug --no-bundle` 和 `git diff --check` 通过 |
+| 2026-07-24 | T321 Codex 本地会话 Token | 新增 4 个 Rust 行为测试，覆盖累计快照差值、跨午夜基线、消息/损坏行过滤、活动与归档副本去重，并在 `TZ=UTC` 下复验；本机实时解析得到 287 请求、30,795,319 Token，与 CC Switch 3.16.5 已导入的 `codex_session` 数字逐项一致。`npm run check` 通过：10 个前端测试文件、46 个测试，TypeScript 与 Vite 构建通过；Rust 串行全量检查通过：35 个库测试和 39 个集成测试；`cargo fmt --check`、Clippy `-D warnings`、Tauri debug 无 bundle 构建和 `git diff --check` 通过 |
 | 2026-07-20 | Rust 静态检查 | `cargo fmt --check` 和 `cargo clippy --all-targets -- -D warnings` 通过 |
 | 2026-07-20 | T206 主代理审查 | 按无 Git 项目约束审查 T206 变更；未发现规范或规格遗留问题 |
 | 2026-07-20 | T301 主代理审查 | 按无 Git 项目约束审查 T301 变更；确认只展示真实账户状态/套餐，额度仍标记为 Demo |
@@ -263,3 +266,4 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、cc-switc
 | 2026-07-20 | T318 | 所有监控项改为启动时立即读取并由 Tauri 后台每 10 秒触发刷新；窗口隐藏后继续刷新，慢请求和 StrictMode 首轮不重叠，失败后保留最后成功数据并标记“过期缓存”，连接卡片会保留 CLI 状态过期提示 |
 | 2026-07-21 | T319 | 修复安装版 App 从 Finder 启动时不继承 nvm PATH 导致只显示演示数据的问题；真实账户、额度、账户 Token 和当前任务 Token 读取都会使用解析到的 Codex CLI 绝对路径 |
 | 2026-07-21 | T320 | 将真实账户、额度、账户 Token 和当前任务 Token 读取切换为应用级 app-server 长连接；每轮 10 秒刷新不再为这些接口重复启动多个短生命周期 app-server |
+| 2026-07-24 | T321 | 今日 Token 改为直接解析 Codex 自己的 `sessions` / `archived_sessions` JSONL；移除运行时对 cc-switch 数据库和 `sqlite3` 的依赖，界面数据源文案改为“本地会话”，账户日桶继续作为失败兜底 |

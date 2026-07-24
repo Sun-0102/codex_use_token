@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::{
     app_server_account, app_server_client::AppServerRuntime, app_server_rate_limits,
-    app_server_thread_usage, app_server_usage, cc_switch_usage, cli_probe, desktop,
+    app_server_thread_usage, app_server_usage, cli_probe, codex_session_usage, desktop,
 };
 use serde::Serialize;
 
@@ -73,14 +73,14 @@ pub fn codex_usage_status(
 }
 
 #[tauri::command]
-pub async fn cc_switch_usage_status() -> cc_switch_usage::CcSwitchUsageStatus {
-    tauri::async_runtime::spawn_blocking(cc_switch_usage::read_cc_switch_usage_status)
+pub async fn codex_session_usage_status() -> codex_session_usage::CodexSessionUsageStatus {
+    tauri::async_runtime::spawn_blocking(codex_session_usage::read_codex_session_usage_status)
         .await
-        .unwrap_or_else(|_| cc_switch_usage::CcSwitchUsageStatus {
-            state: cc_switch_usage::CcSwitchUsageState::Unavailable,
+        .unwrap_or_else(|_| codex_session_usage::CodexSessionUsageStatus {
+            state: codex_session_usage::CodexSessionUsageState::Unavailable,
             captured_at_ms: 0,
             today: None,
-            message: "cc-switch 今日 Token 统计读取任务异常退出".to_string(),
+            message: "Codex 本地会话统计读取任务异常退出".to_string(),
         })
 }
 

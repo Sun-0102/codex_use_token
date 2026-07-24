@@ -88,9 +88,9 @@ export interface CodexUsageStatus {
   isStale?: boolean;
 }
 
-export type CcSwitchUsageState = "available" | "unavailable";
+export type CodexSessionUsageState = "available" | "unavailable";
 
-export interface CcSwitchDailyUsage {
+export interface CodexSessionDailyUsage {
   requestCount: number;
   inputTokens: number;
   freshInputTokens: number;
@@ -98,13 +98,12 @@ export interface CcSwitchDailyUsage {
   cacheReadTokens: number;
   cacheCreationTokens: number;
   totalTokens: number;
-  totalCostUsd: number;
 }
 
-export interface CcSwitchUsageStatus {
-  state: CcSwitchUsageState;
+export interface CodexSessionUsageStatus {
+  state: CodexSessionUsageState;
   capturedAtMs: number;
-  today: CcSwitchDailyUsage | null;
+  today: CodexSessionDailyUsage | null;
   message: string;
   isStale?: boolean;
 }
@@ -152,8 +151,8 @@ export function readCodexUsageStatus(): Promise<CodexUsageStatus> {
   return invoke<CodexUsageStatus>("codex_usage_status");
 }
 
-export function readCcSwitchUsageStatus(): Promise<CcSwitchUsageStatus> {
-  return invoke<CcSwitchUsageStatus>("cc_switch_usage_status");
+export function readCodexSessionUsageStatus(): Promise<CodexSessionUsageStatus> {
+  return invoke<CodexSessionUsageStatus>("codex_session_usage_status");
 }
 
 export function readCodexThreadTokenUsageStatus(): Promise<CodexThreadTokenUsageStatus> {

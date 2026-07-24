@@ -9,8 +9,8 @@ pub mod app_server_session;
 pub mod app_server_supervisor;
 pub mod app_server_thread_usage;
 pub mod app_server_usage;
-pub mod cc_switch_usage;
 mod cli_probe;
+pub mod codex_session_usage;
 mod commands;
 mod desktop;
 mod monitor_refresh;
@@ -32,7 +32,7 @@ pub fn run() {
             commands::codex_account_status,
             commands::codex_rate_limits_status,
             commands::codex_usage_status,
-            commands::cc_switch_usage_status,
+            commands::codex_session_usage_status,
             commands::codex_thread_token_usage_status,
             commands::hide_usage_window,
             commands::set_usage_window_mode,

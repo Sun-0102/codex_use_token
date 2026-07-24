@@ -19,10 +19,10 @@ import {
   readCodexRateLimitsStatus,
   readCodexThreadTokenUsageStatus,
   readCodexUsageStatus,
-  readCcSwitchUsageStatus,
+  readCodexSessionUsageStatus,
   setUsageWindowMode,
   updateTrayUsage,
-  type CcSwitchUsageStatus,
+  type CodexSessionUsageStatus,
   type CodexAccountStatus,
   type CodexCliStatus,
   type CodexRateLimitsStatus,
@@ -37,7 +37,7 @@ interface UsageMonitorRound {
   accountStatus: CodexAccountStatus;
   rateLimitsStatus: CodexRateLimitsStatus;
   usageStatus: CodexUsageStatus;
-  ccSwitchUsageStatus: CcSwitchUsageStatus;
+  sessionUsageStatus: CodexSessionUsageStatus;
   threadTokenUsageStatus: CodexThreadTokenUsageStatus;
 }
 
@@ -48,7 +48,7 @@ async function readUsageMonitorRound(): Promise<UsageMonitorRound> {
     accountStatus,
     rateLimitsStatus,
     usageStatus,
-    ccSwitchUsageStatus,
+    sessionUsageStatus,
     threadTokenUsageStatus,
   ] = await Promise.all([
     readCodexCliStatus().catch<CodexCliStatus>(() => ({
@@ -77,11 +77,11 @@ async function readUsageMonitorRound(): Promise<UsageMonitorRound> {
       dailyUsageBuckets: [],
       message: "无法调用本机 Codex Token 用量读取服务",
     })),
-    readCcSwitchUsageStatus().catch<CcSwitchUsageStatus>(() => ({
+    readCodexSessionUsageStatus().catch<CodexSessionUsageStatus>(() => ({
       state: "unavailable",
       capturedAtMs,
       today: null,
-      message: "无法读取 cc-switch 今日 Token 统计",
+      message: "无法读取 Codex 本地会话 Token 统计",
     })),
     readCodexThreadTokenUsageStatus().catch<CodexThreadTokenUsageStatus>(
       () => ({
@@ -98,7 +98,7 @@ async function readUsageMonitorRound(): Promise<UsageMonitorRound> {
     accountStatus,
     rateLimitsStatus,
     usageStatus,
-    ccSwitchUsageStatus,
+    sessionUsageStatus,
     threadTokenUsageStatus,
   };
 }
@@ -117,8 +117,8 @@ function App() {
   const [rateLimitsStatus, setRateLimitsStatus] =
     useState<CodexRateLimitsStatus | null>(null);
   const [usageStatus, setUsageStatus] = useState<CodexUsageStatus | null>(null);
-  const [ccSwitchUsageStatus, setCcSwitchUsageStatus] =
-    useState<CcSwitchUsageStatus | null>(null);
+  const [sessionUsageStatus, setSessionUsageStatus] =
+    useState<CodexSessionUsageStatus | null>(null);
   const [threadTokenUsageStatus, setThreadTokenUsageStatus] =
     useState<CodexThreadTokenUsageStatus | null>(null);
   const [lastLiveSnapshot, setLastLiveSnapshot] =
@@ -148,7 +148,7 @@ function App() {
         accountStatus: nextAccountStatus,
         rateLimitsStatus: nextRateLimitsStatus,
         usageStatus: nextUsageStatus,
-        ccSwitchUsageStatus: nextCcSwitchUsageStatus,
+        sessionUsageStatus: nextSessionUsageStatus,
         threadTokenUsageStatus: nextThreadTokenUsageStatus,
       } = await readSharedUsageMonitorRound();
 
@@ -176,10 +176,10 @@ function App() {
           (status) => status.state === "available",
         ),
       );
-      setCcSwitchUsageStatus((previous) =>
+      setSessionUsageStatus((previous) =>
         mergeRefreshStatus(
           previous,
-          nextCcSwitchUsageStatus,
+          nextSessionUsageStatus,
           (status) => status.state === "available" && status.today !== null,
         ),
       );
@@ -220,7 +220,7 @@ function App() {
       cliStatus={cliStatus}
       accountStatus={accountStatus}
       usageStatus={usageStatus}
-      ccSwitchUsageStatus={ccSwitchUsageStatus}
+      sessionUsageStatus={sessionUsageStatus}
       threadTokenUsageStatus={threadTokenUsageStatus}
       mode={windowMode}
       canCollapse={supportsCompactMode}

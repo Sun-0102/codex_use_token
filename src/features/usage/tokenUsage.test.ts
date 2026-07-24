@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { presentTokenUsage } from "./tokenUsage";
 
 describe("presentTokenUsage", () => {
-  it("prefers cc-switch today's real token usage over account daily buckets", () => {
+  it("prefers today's Codex session usage over account daily buckets", () => {
     expect(
       presentTokenUsage(
         {
@@ -21,7 +21,7 @@ describe("presentTokenUsage", () => {
         {
           state: "available",
           capturedAtMs: 456,
-          message: "已读取 cc-switch 今日 Codex 统计：1343 个请求",
+          message: "已从 Codex 本地会话日志统计今日用量：1343 个请求",
           today: {
             requestCount: 1_343,
             inputTokens: 151_257_000,
@@ -30,7 +30,6 @@ describe("presentTokenUsage", () => {
             cacheReadTokens: 145_638_000,
             cacheCreationTokens: 0,
             totalTokens: 151_779_617,
-            totalCostUsd: 32.882,
           },
         },
         new Date(2026, 6, 20),
@@ -41,7 +40,7 @@ describe("presentTokenUsage", () => {
       totalLabel: "缓存命中",
       lifetimeTokens: "1.5亿",
       peakDailyTokens: "新增 561.9万 · 输出 52.3万",
-      trendDetail: "1,343 请求 · 实时统计",
+      trendDetail: "1,343 请求 · 本地会话",
       isReal: true,
     });
   });
@@ -79,12 +78,12 @@ describe("presentTokenUsage", () => {
     });
   });
 
-  it("labels retained cc-switch values as stale after a refresh failure", () => {
+  it("labels retained Codex session values as stale after a refresh failure", () => {
     expect(
       presentTokenUsage(null, {
         state: "available",
         capturedAtMs: 456,
-        message: "无法读取 cc-switch 今日 Token 统计",
+        message: "无法读取 Codex 本地会话 Token 统计",
         isStale: true,
         today: {
           requestCount: 12,
@@ -94,7 +93,6 @@ describe("presentTokenUsage", () => {
           cacheReadTokens: 8_000,
           cacheCreationTokens: 0,
           totalTokens: 10_500,
-          totalCostUsd: 0,
         },
       }),
     ).toMatchObject({

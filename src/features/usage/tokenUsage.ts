@@ -1,5 +1,5 @@
 import type {
-  CcSwitchUsageStatus,
+  CodexSessionUsageStatus,
   CodexUsageStatus,
 } from "../../platform/runtime";
 
@@ -15,11 +15,14 @@ export interface TokenUsagePresentation {
 
 export function presentTokenUsage(
   status: CodexUsageStatus | null,
-  ccSwitchStatus: CcSwitchUsageStatus | null = null,
+  sessionUsageStatus: CodexSessionUsageStatus | null = null,
   now = new Date(),
 ): TokenUsagePresentation {
-  if (ccSwitchStatus?.state === "available" && ccSwitchStatus.today !== null) {
-    const today = ccSwitchStatus.today;
+  if (
+    sessionUsageStatus?.state === "available" &&
+    sessionUsageStatus.today !== null
+  ) {
+    const today = sessionUsageStatus.today;
 
     return {
       dailyLabel: "今日 Token",
@@ -28,7 +31,7 @@ export function presentTokenUsage(
       lifetimeTokens: formatTokenCount(today.cacheReadTokens),
       peakDailyTokens: `新增 ${formatTokenCount(today.freshInputTokens)} · 输出 ${formatTokenCount(today.outputTokens)}`,
       trendDetail: `${new Intl.NumberFormat("zh-CN").format(today.requestCount)} 请求 · ${
-        ccSwitchStatus.isStale ? "过期缓存" : "实时统计"
+        sessionUsageStatus.isStale ? "过期缓存" : "本地会话"
       }`,
       isReal: true,
     };
