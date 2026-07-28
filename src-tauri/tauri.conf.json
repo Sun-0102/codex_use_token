@@ -15,7 +15,7 @@
         "title": "Codex Reserve",
         "width": 420,
         "height": 510,
-        "minWidth": 320,
+        "minWidth": 72,
         "minHeight": 72,
         "resizable": false,
         "decorations": false,

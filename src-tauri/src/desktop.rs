@@ -47,7 +47,7 @@ pub enum WindowMode {
 impl WindowMode {
     fn logical_size(self) -> LogicalSize<f64> {
         match self {
-            Self::Compact => LogicalSize::new(340.0, 82.0),
+            Self::Compact => LogicalSize::new(82.0, 82.0),
             Self::Detailed => LogicalSize::new(420.0, 510.0),
         }
     }
@@ -271,10 +271,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn compact_mode_stays_glanceable() {
+    fn compact_mode_is_a_single_floating_orb() {
         assert_eq!(
             WindowMode::Compact.logical_size(),
-            LogicalSize::new(340.0, 82.0)
+            LogicalSize::new(82.0, 82.0)
         );
     }
 

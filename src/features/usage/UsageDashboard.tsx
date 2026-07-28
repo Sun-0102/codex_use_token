@@ -34,24 +34,6 @@ type GaugeStyle = CSSProperties & {
   "--remaining": string;
 };
 
-function CompactQuota({ window }: { window: QuotaWindow | null }) {
-  const gaugeStyle: GaugeStyle = {
-    "--remaining": `${window?.remainingPercent ?? 0}%`,
-  };
-
-  return (
-    <span className="compact-quota is-secondary">
-      <span className="compact-reading">
-        <small>W</small>
-        <strong>{window === null ? "—" : `${window.remainingPercent}%`}</strong>
-      </span>
-      <span className="compact-track" aria-hidden="true" style={gaugeStyle}>
-        <i />
-      </span>
-    </span>
-  );
-}
-
 function CompactWidget({
   snapshot,
   onExpand,
@@ -62,42 +44,50 @@ function CompactWidget({
   const isLive = snapshot.source === "codex";
   const isStale = snapshot.source === "stale";
   const weeklyWindow = selectWeeklyQuotaWindow(snapshot.windows);
+  const sourceLabel = isLive ? "实时" : isStale ? "缓存" : "演示";
 
   return (
-    <main className="compact-canvas">
-      <section className="compact-widget">
-        <div
-          className="compact-drag-region"
-          data-tauri-drag-region
-          title="拖动悬浮窗"
-        >
-          <span className="compact-brand" aria-hidden="true">
-            CR
-          </span>
-          <span
-            className={`compact-source-dot${isLive ? " is-live" : ""}${
-              isStale ? " is-stale" : ""
-            }`}
-            role="img"
-            aria-label={
-              isLive
-                ? "当前额度为实时数据"
-                : isStale
-                  ? "当前为过期缓存数据"
-                  : "当前为演示数据"
-            }
+    <main className="compact-canvas" data-tauri-drag-region>
+      <button
+        className={`compact-orb${isLive ? " is-live" : ""}${
+          isStale ? " is-stale" : ""
+        }`}
+        type="button"
+        onClick={onExpand}
+        title={`周额度${weeklyWindow === null ? "等待同步" : `剩余 ${weeklyWindow.remainingPercent}%`} · ${sourceLabel} · 点击查看详情`}
+        aria-label={`周额度${weeklyWindow === null ? "等待同步" : `剩余 ${weeklyWindow.remainingPercent}%`}，${sourceLabel}数据，点击查看详情`}
+      >
+        <svg viewBox="0 0 72 72" aria-hidden="true">
+          <defs>
+            <linearGradient
+              id="compact-orb-gradient"
+              x1="0"
+              y1="0"
+              x2="1"
+              y2="1"
+            >
+              <stop offset="0%" stopColor="#ff3d72" />
+              <stop offset="100%" stopColor="#7548ff" />
+            </linearGradient>
+          </defs>
+          <circle className="compact-orb-track" cx="36" cy="36" r="29" />
+          <circle
+            className="compact-orb-progress"
+            cx="36"
+            cy="36"
+            r="29"
+            pathLength="100"
+            strokeDasharray="100"
+            strokeDashoffset={100 - (weeklyWindow?.remainingPercent ?? 0)}
           />
-        </div>
-        <button
-          className="compact-expand"
-          type="button"
-          onClick={onExpand}
-          aria-label="展开 Codex 用量详情"
-        >
-          <CompactQuota window={weeklyWindow} />
-          <span className="expand-chevron" aria-hidden="true" />
-        </button>
-      </section>
+        </svg>
+        <span className="compact-orb-reading">
+          <strong>
+            {weeklyWindow === null ? "—" : `${weeklyWindow.remainingPercent}%`}
+          </strong>
+          <small>{sourceLabel}</small>
+        </span>
+      </button>
     </main>
   );
 }
