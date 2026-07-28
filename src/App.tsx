@@ -202,10 +202,7 @@ function App() {
     const trayUsage = trayUsagePercentsFromSnapshot(snapshot);
     if (trayUsage === null) return;
 
-    void updateTrayUsage(
-      trayUsage.primaryRemainingPercent,
-      trayUsage.secondaryRemainingPercent,
-    ).catch(() => undefined);
+    void updateTrayUsage(trayUsage.weeklyRemainingPercent).catch(() => undefined);
   }, [snapshot]);
 
   const changeWindowMode = (nextMode: UsageWindowMode) => {

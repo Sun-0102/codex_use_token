@@ -167,12 +167,8 @@ export function setUsageWindowMode(mode: UsageWindowMode): Promise<void> {
   return invoke<void>("set_usage_window_mode", { mode });
 }
 
-export function updateTrayUsage(
-  primaryRemainingPercent: number | null,
-  secondaryRemainingPercent: number | null,
-): Promise<void> {
+export function updateTrayUsage(weeklyRemainingPercent: number): Promise<void> {
   return invoke<void>("update_tray_usage", {
-    primaryRemainingPercent,
-    secondaryRemainingPercent,
+    weeklyRemainingPercent,
   });
 }

@@ -30,22 +30,20 @@ interface UsageDashboardProps {
   onHide: () => void;
 }
 
-const RESERVE_THRESHOLD_PERCENT = 20;
-
 type GaugeStyle = CSSProperties & {
   "--remaining": string;
 };
 
-function CompactQuota({ window }: { window: QuotaWindow }) {
+function CompactQuota({ window }: { window: QuotaWindow | null }) {
   const gaugeStyle: GaugeStyle = {
-    "--remaining": `${window.remainingPercent}%`,
+    "--remaining": `${window?.remainingPercent ?? 0}%`,
   };
 
   return (
-    <span className={`compact-quota is-${window.id}`}>
+    <span className="compact-quota is-secondary">
       <span className="compact-reading">
-        <small>{window.id === "primary" ? "5H" : "W"}</small>
-        <strong>{window.remainingPercent}%</strong>
+        <small>W</small>
+        <strong>{window === null ? "—" : `${window.remainingPercent}%`}</strong>
       </span>
       <span className="compact-track" aria-hidden="true" style={gaugeStyle}>
         <i />
@@ -63,6 +61,7 @@ function CompactWidget({
 }) {
   const isLive = snapshot.source === "codex";
   const isStale = snapshot.source === "stale";
+  const weeklyWindow = selectWeeklyQuotaWindow(snapshot.windows);
 
   return (
     <main className="compact-canvas">
@@ -95,9 +94,7 @@ function CompactWidget({
           onClick={onExpand}
           aria-label="展开 Codex 用量详情"
         >
-          {snapshot.windows.map((window) => (
-            <CompactQuota key={window.id} window={window} />
-          ))}
+          <CompactQuota window={weeklyWindow} />
           <span className="expand-chevron" aria-hidden="true" />
         </button>
       </section>
@@ -105,54 +102,50 @@ function CompactWidget({
   );
 }
 
-function QuotaOrbit({ windows }: { windows: QuotaWindow[] }) {
-  const primary = windows.find((window) => window.id === "primary");
-  const secondary = windows.find((window) => window.id === "secondary");
-  const lowestWindow = selectLowestQuotaWindow(windows);
-
+function QuotaGauge({ window }: { window: QuotaWindow | null }) {
   return (
-    <div className="quota-orbit" aria-hidden="true">
+    <div className="quota-gauge" aria-hidden="true">
       <svg viewBox="0 0 128 128">
-        <circle className="orbit-track" cx="64" cy="64" r="53" />
+        <defs>
+          <linearGradient id="reserve-gauge-gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#ff3d72" />
+            <stop offset="58%" stopColor="#ff4d7e" />
+            <stop offset="100%" stopColor="#7548ff" />
+          </linearGradient>
+        </defs>
+        <circle className="gauge-track" cx="64" cy="64" r="49" />
         <circle
-          className="orbit-progress orbit-primary"
+          className="gauge-progress"
           cx="64"
           cy="64"
-          r="53"
+          r="49"
           pathLength="100"
           strokeDasharray="100"
-          strokeDashoffset={100 - (primary?.remainingPercent ?? 0)}
-        />
-        <circle className="orbit-track orbit-track-inner" cx="64" cy="64" r="39" />
-        <circle
-          className="orbit-progress orbit-secondary"
-          cx="64"
-          cy="64"
-          r="39"
-          pathLength="100"
-          strokeDasharray="100"
-          strokeDashoffset={100 - (secondary?.remainingPercent ?? 0)}
+          strokeDashoffset={100 - (window?.remainingPercent ?? 0)}
         />
       </svg>
-      <div className="orbit-center">
-        <span>{lowestWindow === null ? "等待余量" : `${lowestWindow.label}余量`}</span>
+      <div className="gauge-center">
         <strong>
-          {lowestWindow === null ? "—" : `${lowestWindow.remainingPercent}%`}
+          {window === null ? "—" : `${window.remainingPercent}%`}
         </strong>
+        <span>剩余</span>
       </div>
     </div>
   );
 }
 
-function QuotaLegend({ window }: { window: QuotaWindow }) {
+function QuotaDetail({ window }: { window: QuotaWindow }) {
   return (
-    <div className={`quota-legend is-${window.id}`}>
-      <span className="legend-dot" aria-hidden="true" />
+    <div className={`quota-detail is-${window.id}`}>
       <div>
+        <span>周期</span>
         <strong>{formatDuration(window.windowDurationMins)}</strong>
         <small>{formatResetCountdown(window.resetsAtUnixSeconds)}</small>
       </div>
-      <b>{window.remainingPercent}<span>%</span></b>
+      <b>
+        {window.remainingPercent}
+        <span>%</span>
+      </b>
     </div>
   );
 }
@@ -179,7 +172,10 @@ export function UsageDashboard({
   const accountPresentation = presentAccountStatus(accountStatus);
   const tokenUsage = presentTokenUsage(usageStatus, sessionUsageStatus);
   const threadTokenUsage = presentThreadTokenUsage(threadTokenUsageStatus);
-  const planCredits = presentPlanCredits(accountStatus, snapshot);
+  const weeklyWindow = selectWeeklyQuotaWindow(snapshot.windows);
+  const quotaStyle: GaugeStyle = {
+    "--remaining": `${weeklyWindow?.remainingPercent ?? 0}%`,
+  };
   const connectionDetail = presentConnectionDetail({
     accountStatus,
     accountDetail: accountPresentation.detail,
@@ -207,8 +203,14 @@ export function UsageDashboard({
               CR
             </span>
             <div className="brand-copy">
-              <strong>Codex Reserve</strong>
-              <span>用量监控</span>
+              <strong>Codex 余量</strong>
+              <span>
+                {isLive
+                  ? "实时读取本机 Codex 用量"
+                  : isStale
+                    ? "显示上次读取的 Codex 用量"
+                    : "Codex 用量界面预览"}
+              </span>
             </div>
             <span
               className={`source-badge${isLive ? " is-live" : ""}${
@@ -243,71 +245,64 @@ export function UsageDashboard({
 
         <div className="panel-content">
           <section className="quota-hero" aria-label="Codex 配额余量">
-            <QuotaOrbit windows={snapshot.windows} />
-            <div className="quota-summary">
-              <div className="summary-heading">
-                <span>剩余用量</span>
-                <small>低于 {RESERVE_THRESHOLD_PERCENT}% 提醒</small>
+            <div className="quota-overview">
+              <QuotaGauge window={weeklyWindow} />
+              <div className="quota-details">
+                {weeklyWindow === null ? (
+                  <div className="quota-empty">
+                    <span>周期</span>
+                    <strong>等待周额度同步</strong>
+                  </div>
+                ) : (
+                  <QuotaDetail window={weeklyWindow} />
+                )}
               </div>
-              <div className="quota-legends">
-                {snapshot.windows.map((window) => (
-                  <QuotaLegend key={window.id} window={window} />
-                ))}
+            </div>
+            <div className="quota-rail" style={quotaStyle}>
+              <span className="quota-rail-fill" aria-hidden="true" />
+              <div>
+                <small>
+                  {weeklyWindow === null ? "等待周额度同步" : "周额度余量"}
+                </small>
+                <strong>
+                  {weeklyWindow === null
+                    ? "—"
+                    : `已用 ${100 - weeklyWindow.remainingPercent}%`}
+                </strong>
               </div>
             </div>
           </section>
 
-          <section className="insight-card" aria-label="用量建议">
-            <span className="insight-mark" aria-hidden="true" />
+          <section className="metric-grid" aria-label="今日 Token 监控">
+            <article className="metric-card token-card">
+              <span>{tokenUsage.dailyLabel}</span>
+              <strong>{tokenUsage.todayTokens}</strong>
+              <small>{tokenUsage.trendDetail}</small>
+            </article>
+            <article className="metric-card cache-card">
+              <span>{tokenUsage.totalLabel}</span>
+              <strong>{tokenUsage.lifetimeTokens}</strong>
+              <small>{tokenUsage.peakDailyTokens}</small>
+            </article>
+          </section>
+
+          <section className="task-strip" aria-label="当前任务 Token">
+            <span className="task-mark" aria-hidden="true" />
             <div>
               <small>当前任务 Token</small>
               <strong>{threadTokenUsage.label}</strong>
               <em>{threadTokenUsage.detail}</em>
             </div>
-            <span className="insight-value">{threadTokenUsage.total}</span>
-          </section>
-
-          <section className="metric-grid" aria-label="详细监控信息">
-            <article className="metric-card">
-              <span>{tokenUsage.dailyLabel}</span>
-              <strong>{tokenUsage.todayTokens}</strong>
-              <small>{tokenUsage.trendDetail}</small>
-            </article>
-            <article className="metric-card">
-              <span>{tokenUsage.totalLabel}</span>
-              <strong>{tokenUsage.lifetimeTokens}</strong>
-              <small>{tokenUsage.peakDailyTokens}</small>
-            </article>
-            <article
-              className={`metric-card connection-card ${
-                accountStatus?.state === "signedIn"
-                  ? "is-ready"
-                  : isLive
-                    ? "is-live"
-                    : `is-${cliPresentation.tone}`
-              }`}
-            >
-              <span>Codex 连接</span>
-              <strong>
-                {accountStatus?.state === "signedIn"
-                  ? "账户已连接"
-                  : accountPresentation.label}
-              </strong>
-              <small>{connectionDetail}</small>
-            </article>
-            <article className="metric-card">
-              <span>套餐与 Credits</span>
-              <strong>{planCredits.plan}</strong>
-              <small>{planCredits.detail}</small>
-            </article>
+            <span className="task-value">{threadTokenUsage.total}</span>
           </section>
 
           <footer className="panel-footer">
             <span>
-              {isLive ? "额度实时更新" : isStale ? "过期缓存" : "演示数据"} ·{" "}
-              {capturedAt}
+              {isLive ? "实时" : isStale ? "过期缓存" : "演示"} · {capturedAt}
             </span>
-            <span>数据仅保存在本机</span>
+            <span title={connectionDetail}>
+              {accountPresentation.label} · 数据仅保存在本机
+            </span>
           </footer>
         </div>
       </section>
@@ -423,5 +418,15 @@ export function selectLowestQuotaWindow(windows: QuotaWindow[]): QuotaWindow | n
         ? window
         : lowest,
     null,
+  );
+}
+
+export function selectWeeklyQuotaWindow(
+  windows: QuotaWindow[],
+): QuotaWindow | null {
+  return (
+    windows.find((window) => window.id === "secondary") ??
+    windows.find((window) => (window.windowDurationMins ?? 0) >= 24 * 60) ??
+    null
   );
 }

@@ -30,8 +30,7 @@ describe("trayUsagePercentsFromSnapshot", () => {
     };
 
     expect(trayUsagePercentsFromSnapshot(snapshot)).toEqual({
-      primaryRemainingPercent: 73,
-      secondaryRemainingPercent: 41,
+      weeklyRemainingPercent: 41,
     });
   });
 
@@ -66,8 +65,28 @@ describe("trayUsagePercentsFromSnapshot", () => {
         ],
       }),
     ).toEqual({
-      primaryRemainingPercent: null,
-      secondaryRemainingPercent: 75,
+      weeklyRemainingPercent: 75,
     });
+  });
+
+  it("does not send a five-hour-only snapshot to the tray", () => {
+    expect(
+      trayUsagePercentsFromSnapshot({
+        source: "codex",
+        capturedAtMs: 123,
+        planType: "pro",
+        creditsBalance: null,
+        windows: [
+          {
+            id: "primary",
+            label: "5 小时窗口",
+            usedPercent: 10,
+            remainingPercent: 90,
+            resetsAtUnixSeconds: 1_784_548_800,
+            windowDurationMins: 300,
+          },
+        ],
+      }),
+    ).toBeNull();
   });
 });

@@ -111,40 +111,32 @@ pub fn set_usage_window_mode(
 #[tauri::command]
 pub fn update_tray_usage(
     app: tauri::AppHandle,
-    primary_remaining_percent: Option<u8>,
-    secondary_remaining_percent: Option<u8>,
+    weekly_remaining_percent: Option<u8>,
 ) -> Result<(), String> {
-    let title = format_tray_title(primary_remaining_percent, secondary_remaining_percent)?;
-    let tooltip = format_tray_tooltip(primary_remaining_percent, secondary_remaining_percent)?;
+    let title = format_tray_title(weekly_remaining_percent)?;
+    let tooltip = format_tray_tooltip(weekly_remaining_percent)?;
     let tray = app
         .tray_by_id(desktop::USAGE_TRAY_ID)
         .ok_or_else(|| "用量状态栏尚未初始化".to_string())?;
 
+    tray.set_icon(Some(desktop::tray_ring_icon(weekly_remaining_percent)))
+        .map_err(|error| error.to_string())?;
     tray.set_title(Some(&title))
         .map_err(|error| error.to_string())?;
     tray.set_tooltip(Some(&tooltip))
         .map_err(|error| error.to_string())
 }
 
-fn format_tray_title(primary: Option<u8>, secondary: Option<u8>) -> Result<String, String> {
-    validate_tray_percent(primary)?;
-    validate_tray_percent(secondary)?;
-
-    Ok(format!(
-        "5h {} · W {}",
-        format_tray_percent(primary),
-        format_tray_percent(secondary)
-    ))
+fn format_tray_title(weekly: Option<u8>) -> Result<String, String> {
+    validate_tray_percent(weekly)?;
+    Ok(format_tray_percent(weekly))
 }
 
-fn format_tray_tooltip(primary: Option<u8>, secondary: Option<u8>) -> Result<String, String> {
-    validate_tray_percent(primary)?;
-    validate_tray_percent(secondary)?;
-
+fn format_tray_tooltip(weekly: Option<u8>) -> Result<String, String> {
+    validate_tray_percent(weekly)?;
     Ok(format!(
-        "Codex Reserve · 5 小时剩余 {} · 长周期剩余 {}",
-        format_tray_percent(primary),
-        format_tray_percent(secondary)
+        "Codex Reserve · 周额度剩余 {}",
+        format_tray_percent(weekly)
     ))
 }
 
@@ -173,25 +165,23 @@ mod tests {
     }
 
     #[test]
-    fn tray_title_keeps_both_quota_windows_glanceable() {
-        assert_eq!(
-            format_tray_title(Some(73), Some(41)),
-            Ok("5h 73% · W 41%".into())
-        );
+    fn tray_title_only_shows_the_weekly_percentage() {
+        assert_eq!(format_tray_title(Some(90)), Ok("90%".into()));
     }
 
     #[test]
-    fn tray_title_keeps_weekly_quota_visible_when_short_window_is_missing() {
+    fn tray_title_uses_a_placeholder_while_weekly_usage_is_missing() {
+        assert_eq!(format_tray_title(None), Ok("--".into()));
         assert_eq!(
-            format_tray_title(None, Some(75)),
-            Ok("5h -- · W 75%".into())
+            format_tray_tooltip(Some(90)),
+            Ok("Codex Reserve · 周额度剩余 90%".into())
         );
     }
 
     #[test]
     fn tray_title_rejects_invalid_percentages() {
         assert_eq!(
-            format_tray_title(Some(101), Some(41)),
+            format_tray_title(Some(101)),
             Err("剩余用量百分比必须在 0 到 100 之间".into())
         );
     }

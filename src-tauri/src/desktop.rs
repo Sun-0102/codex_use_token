@@ -2,6 +2,7 @@
 
 use tauri::{
     App, AppHandle, LogicalSize, Manager, Runtime, WebviewWindow, Window, WindowEvent,
+    image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
@@ -64,9 +65,10 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let quit_item = MenuItem::with_id(app, QUIT_MENU_ID, "退出 Codex Reserve", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&toggle_item, &quit_item])?;
 
-    let mut tray_builder = TrayIconBuilder::with_id(USAGE_TRAY_ID)
-        .title("5h -- · W --")
+    let tray_builder = TrayIconBuilder::with_id(USAGE_TRAY_ID)
+        .title("--")
         .tooltip("Codex Reserve · 等待真实用量数据")
+        .icon(tray_ring_icon(None))
         .icon_as_template(true)
         .menu(&menu)
         .show_menu_on_left_click(false)
@@ -90,10 +92,6 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             }
         });
 
-    if let Some(icon) = app.default_window_icon() {
-        tray_builder = tray_builder.icon(icon.clone());
-    }
-
     tray_builder.build(app)?;
     monitor_refresh::start_usage_refresh_ticker(app.app_handle().clone())?;
 
@@ -107,6 +105,43 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     show_usage_window(app.app_handle());
 
     Ok(())
+}
+
+pub fn tray_ring_icon(remaining_percent: Option<u8>) -> Image<'static> {
+    const SIZE: u32 = 32;
+    const CENTER: f32 = 15.5;
+    const RADIUS: f32 = 11.5;
+    const HALF_STROKE: f32 = 2.1;
+
+    let mut rgba = vec![0; (SIZE * SIZE * 4) as usize];
+    let progress = remaining_percent.map(|percent| percent as f32 / 100.0);
+
+    for y in 0..SIZE {
+        for x in 0..SIZE {
+            let dx = x as f32 - CENTER;
+            let dy = y as f32 - CENTER;
+            let distance = (dx * dx + dy * dy).sqrt();
+            let edge_coverage = (HALF_STROKE + 0.75 - (distance - RADIUS).abs()).clamp(0.0, 1.0);
+            if edge_coverage <= 0.0 {
+                continue;
+            }
+
+            let mut angle = dx.atan2(-dy);
+            if angle < 0.0 {
+                angle += std::f32::consts::TAU;
+            }
+            let position = angle / std::f32::consts::TAU;
+            let alpha = match progress {
+                Some(value) if position <= value => 255.0,
+                Some(_) => 46.0,
+                None => 110.0,
+            };
+            let pixel = ((y * SIZE + x) * 4) as usize;
+            rgba[pixel + 3] = (alpha * edge_coverage).round() as u8;
+        }
+    }
+
+    Image::new_owned(rgba, SIZE, SIZE)
 }
 
 pub fn handle_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
@@ -249,5 +284,29 @@ mod tests {
             WindowMode::Detailed.logical_size(),
             LogicalSize::new(420.0, 510.0)
         );
+    }
+
+    #[test]
+    fn tray_ring_uses_the_weekly_percentage_as_an_arc() {
+        let empty = tray_ring_icon(Some(0));
+        let nearly_full = tray_ring_icon(Some(90));
+        let empty_opaque_pixels = empty
+            .rgba()
+            .iter()
+            .skip(3)
+            .step_by(4)
+            .filter(|&&a| a > 200)
+            .count();
+        let full_opaque_pixels = nearly_full
+            .rgba()
+            .iter()
+            .skip(3)
+            .step_by(4)
+            .filter(|&&a| a > 200)
+            .count();
+
+        assert!(full_opaque_pixels > empty_opaque_pixels);
+        assert_eq!(empty.width(), 32);
+        assert_eq!(empty.height(), 32);
     }
 }
