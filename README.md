@@ -50,6 +50,17 @@ cargo test --manifest-path src-tauri/Cargo.toml
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 ```
 
+## 在 GitHub 构建 Windows 安装包
+
+仓库的 `Build Windows` GitHub Actions 会在每次推送到 `main` 后自动使用 `windows-latest` 构建 Windows x64 版本，也可以在 GitHub 的 **Actions → Build Windows → Run workflow** 手动运行。
+
+构建成功后，打开对应的 Actions 运行记录，在页面底部下载 `codex-reserve-windows-x64`。GitHub 下载的是 ZIP，解压后包含 NSIS 的 `*-setup.exe` 和 WiX 的 `.msi` 安装包。当前安装包未做 Windows 代码签名，分发给其他人时可能出现 Microsoft Defender SmartScreen 提示。
+
+Windows 安装版按以下位置读取本机 Codex：
+
+- 今日 Token：优先使用 `CODEX_HOME`，否则读取 `%USERPROFILE%\.codex\sessions` 和 `archived_sessions`。
+- Codex CLI：优先使用 `CODEX_CLI_PATH` 和 `PATH`，并额外查找 `%APPDATA%\npm\codex.cmd`、WindowsApps 和 `%USERPROFILE%\.volta\bin`。
+
 ## 目录结构
 
 ```text
@@ -78,6 +89,7 @@ docs/
 - UI 会明确区分实时、过期缓存和演示数据。
 - macOS 主窗口已转换为非激活式原生 NSPanel；优先显示在状态栏图标下方，取不到 monitor 时降级到右上角但仍会显示。
 - 应用会执行 `codex --version` 和 `codex login status` 检测 CLI，但不会读取或展示登录凭据；安装版会额外检查 `PATH`、nvm、fnm、asdf、Homebrew 和登录 shell 解析到的 `codex` 路径。
+- Windows 安装版会使用 `%USERPROFILE%\.codex` 作为默认本地会话目录，并额外检查 `%APPDATA%\npm`、WindowsApps 和 Volta 中的 Codex CLI。
 - Rust 侧已能启动并清理应用级 `codex app-server --stdio` 长连接，完成 JSONL 请求/响应关联和 `initialize` / `initialized` 握手，并通过 `account/read`、`account/rateLimits/read`、`account/usage/read` 读取真实账户、额度和账户 Token 汇总。
 - 今日真实 Token 直接扫描 `$CODEX_HOME/sessions`（默认 `~/.codex/sessions`）和 `archived_sessions` 中与今天有关的 JSONL，只处理 `event_msg/token_count`，根据累计快照差值还原每次请求；`input_tokens` 已包含缓存命中，因此总量按 `input_tokens + output_tokens` 计算，不再次叠加 `cached_input_tokens`。
 - `account/usage/read` 当前展示的是账户接口日桶/累计/日峰值，不等同于本地会话逐请求统计口径；本地会话日志不可用时，该数据作为兜底。

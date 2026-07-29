@@ -9,15 +9,15 @@
 | 项目 | 状态 |
 | --- | --- |
 | 当前版本 | `0.1.0` |
-| 当前阶段 | T327 Windows 圆形周额度悬浮球已完成；T017 GitHub 主远端迁移已完成；等待 Windows x64 真机验收 |
+| 当前阶段 | T328 Windows 用户目录与 CLI 路径兼容已完成；T606 GitHub Actions Windows x64 首次构建进行中 |
 | 当前数据 | 账户状态/套餐来自真实 `account/read`；额度窗口来自真实 `account/rateLimits/read`；今日真实 Token 直接来自 `$CODEX_HOME/sessions`（默认 `~/.codex/sessions`）和 `archived_sessions` 的 `event_msg/token_count` 数字事件，按累计快照差值还原请求并以 `input_tokens + output_tokens` 统计，不依赖 cc-switch；账户 Token 日桶/累计仍来自真实 `account/usage/read` 作为兜底；当前任务 Token 来自同一个应用级 app-server 长连接接收的 `thread/tokenUsage/updated`（仅当前连接可见）；全部监控项启动时立即读取并由 Tauri 后台每 30 秒发出刷新节拍，窗口隐藏后继续刷新，上一轮未结束时跳过本轮；安装版会解析 PATH、nvm、fnm、asdf、Homebrew 和登录 shell 中的 Codex CLI 路径；账户、额度、账户 Token 和当前任务 Token 复用一个 `codex app-server --stdio` 长连接；连接失败时显示 Demo 或 stale，不标记为实时 |
 | macOS | 菜单栏常驻；原生 NSPanel 浮层；点击外部自动隐藏；托盘定位拿不到 monitor 时降级到右上角显示 |
-| Windows | 托盘入口与 82×82 周额度悬浮球 / 420×510 详细面板两种窗口形态已编码，尚未在 Windows 真机验收 |
+| Windows | 托盘入口与 82×82 周额度悬浮球 / 420×510 详细面板两种窗口形态已编码；安装版支持 `%USERPROFILE%\.codex`、`%APPDATA%\npm`、WindowsApps 和 Volta 路径；GitHub Actions Windows x64 首次构建待验证 |
 | Codex 连接 | 已能探测 CLI 状态、解析所需协议数据、启动/清理应用级 app-server 长连接、进行 JSONL 编解码与请求/响应关联、完成一次性握手，分流通知、处理请求超时、脱敏 stderr，管理异常退出后的重建与 shutdown 清理，用模拟 app-server 覆盖关键场景，并通过 `account/read` 读取真实登录状态和套餐、通过 `account/rateLimits/read` 读取所有限额桶并显示真实剩余比例/重置时间，能合并 `account/rateLimits/updated` 稀疏通知，通过 `account/usage/read` 显示真实账户 Token 日桶/累计，直接解析 Codex 本地会话 JSONL 显示今日真实 Token、缓存命中和请求数，能解析/展示 `thread/tokenUsage/updated` 当前任务 Token 通知，将同一份真实快照同步到菜单栏、收起态和详细面板，并在断开后保留最后快照且标记 stale；真实数据可用后不再显示 Demo 数值 |
 | 下一项任务 | T401：设计 SQLite schema、迁移与数据保留策略 |
 | Git | `main` 跟踪 GitHub `origin/main`；原 Gitee 远端保留为 `gitee` |
 
-当前结论：软件框架、悬浮层、CLI 探测、协议类型边界、app-server 子进程生命周期、应用级 app-server 长连接、JSONL 请求/响应通道、初始化握手、通知分流、请求超时、stderr 日志边界、异常退出检测、重建与应用退出清理、模拟 app-server 场景覆盖、真实账户状态读取、真实限额桶读取、真实限额显示、稀疏限额通知合并、真实账户 Token 日桶/累计、Codex 本地会话今日 Token 统计、线程级 Token 通知展示、同源快照同步、stale 标记、Demo/实时互斥决策、统一 30 秒自动刷新与防重叠、安装版 CLI 路径解析、真实数据面板 UI 验收修复、指标卡裁切修复、可读性优化、菜单栏单周窗口额度同步修复、macOS 面板定位失败兜底、Token 中文单位显示、Token 口径文案修正和详细面板视觉重构已经完成；详细面板仅展示周额度，不展示 5 小时额度、套餐与 Credits，macOS 菜单栏只显示周额度动态环和百分比，Windows 收起态为 82×82 周额度悬浮球，点击后才展开详细面板，现在等待 Windows x64 真机验收。
+当前结论：软件框架、悬浮层、CLI 探测、协议类型边界、app-server 子进程生命周期、应用级 app-server 长连接、JSONL 请求/响应通道、初始化握手、通知分流、请求超时、stderr 日志边界、异常退出检测、重建与应用退出清理、模拟 app-server 场景覆盖、真实账户状态读取、真实限额桶读取、真实限额显示、稀疏限额通知合并、真实账户 Token 日桶/累计、Codex 本地会话今日 Token 统计、线程级 Token 通知展示、同源快照同步、stale 标记、Demo/实时互斥决策、统一 30 秒自动刷新与防重叠、安装版 CLI 路径解析、Windows 用户目录与常见 CLI 安装路径解析、真实数据面板 UI 验收修复、指标卡裁切修复、可读性优化、菜单栏单周窗口额度同步修复、macOS 面板定位失败兜底、Token 中文单位显示、Token 口径文案修正和详细面板视觉重构已经完成；详细面板仅展示周额度，不展示 5 小时额度、套餐与 Credits，macOS 菜单栏只显示周额度动态环和百分比，Windows 收起态为 82×82 周额度悬浮球，点击后才展开详细面板。GitHub Actions Windows x64 构建流程已加入，首次云端构建正在验证，Windows 真机交互与安装卸载仍待验收。
 
 ## 状态约定
 
@@ -116,6 +116,7 @@ F2 验收：模块可独立测试；应用退出后不产生孤儿进程；日�
 - [x] T325 — 从详细面板移除套餐与 Credits 信息，不再显示套餐名称或“无 Credits”文案；账户与套餐数据读取逻辑保持不变。
 - [x] T326 — 将 macOS 菜单栏从默认方形应用图标及 `5h / W` 双窗口标题改为动态周额度环形模板图标和单个百分比；仅有 5 小时数据时不更新菜单栏，避免错误展示。
 - [x] T327 — 将 Windows 340×82 横向收起条重构为 82×82 圆形周额度悬浮球；圆环内显示百分比及“实时 / 缓存 / 演示”状态，点击整个悬浮球后才展开 420×510 详细面板。
+- [x] T328 — 修复 Windows 安装版本地路径解析：今日 Token 默认读取 `%USERPROFILE%\.codex`，CLI 额外检查 `%APPDATA%\npm`、WindowsApps 和 `%USERPROFILE%\.volta\bin`，同时保留 `CODEX_HOME`、`CODEX_CLI_PATH` 与 `PATH` 的优先级。
 
 F3 验收：界面能显示当前账户真实的限额、重置时间、Codex 本地会话今日真实 Token 和账户 Token 日桶/累计兜底；数据来源与口径清晰；断开连接不会继续显示“实时”。（已完成，等待用户手工测试）
 
@@ -139,6 +140,7 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、Codex �
 
 ### F6 — 跨平台与发布
 
+- [ ] T606（进行中）：建立 GitHub Actions Windows x64 自动构建，在 `main` 推送或手动触发时完成前端检查、Rust 测试/Clippy、Tauri 构建并上传 `.exe` 与 `.msi` 安装包。
 - [ ] T601：在 Windows x64 真机验收托盘、悬浮窗、拖动和展开/收起。
 - [ ] T602：设计正式应用图标和托盘模板图标。
 - [ ] T603：完成 macOS Apple Silicon 签名、公证和安装验证。
@@ -153,6 +155,7 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、Codex �
 - `thread/tokenUsage/updated` 只保证当前 app-server 连接可见任务的细粒度实时数据；其他 Codex 客户端的活动以账户汇总和限额刷新为准。
 - 当前 30 秒刷新由 Rust 后台线程发出事件并复用既有 IPC；Codex 账户、额度、账户 Token 和当前任务 Token 复用同一个应用级 app-server 长连接并串行发送请求，上一轮尚未结束时跳过下一轮，避免重叠启动。
 - 安装版 macOS App 不继承终端的 nvm PATH；CLI 解析会检查显式 `CODEX_CLI_PATH`、进程 PATH、`~/.local/bin`、Volta、Cargo、asdf、nvm、fnm、Homebrew，以及登录 shell 返回的 `codex` 路径；app-server 会使用同一个绝对路径启动。
+- Windows 安装版默认从 `%USERPROFILE%\.codex` 读取本地会话，并额外检查 `%APPDATA%\npm`、WindowsApps 和 Volta 中的 Codex CLI；若用户自定义目录，仍应使用 `CODEX_HOME` 或 `CODEX_CLI_PATH` 显式覆盖。
 - app-server 的部分接口可能随 Codex CLI 版本变化，因此类型必须从实际安装版本生成并做兼容检查。
 - 软件只能调用 Codex 提供的账户数据，不应直接读取、解析或展示登录凭据。
 - Windows 行为目前只有代码与编译层验证，不能标记为真机完成。
@@ -173,6 +176,8 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、Codex �
 
 | 日期 | 范围 | 结果 |
 | --- | --- | --- |
+| 2026-07-29 | T328 Windows 路径兼容 | 新增 3 个 Rust 定向测试，覆盖 `CODEX_HOME` 优先级、Windows 用户目录回退，以及 npm/WindowsApps/Volta 常见 CLI 路径；Rust 全量 78 个测试通过（39 个库测试、39 个集成测试） |
+| 2026-07-29 | T606 GitHub Windows 构建 | 已加入 `Build Windows` workflow；`npm run check` 通过（10 个前端测试文件、50 个测试、TypeScript 与 Vite 构建），Rust 全量 78 个测试、格式检查、Clippy `-D warnings`、Tauri debug 无 bundle 构建、workflow YAML 语法和 `git diff --check` 通过；首次 `windows-latest` x64 云端构建待本次推送验证，不提前标记完成 |
 | 2026-07-20 | 前端测试 | Vitest：28 个测试通过 |
 | 2026-07-20 | Rust 测试 | Cargo：69 个测试通过（30 个库单元测试，含 3 个 T301 账户读取测试、3 个 T302 限额读取测试、3 个 T304 稀疏通知合并测试、3 个 T305 Token 用量测试、3 个 T306 线程 Token 通知测试、2 个 T317 cc-switch 统计解析测试和 1 个 T313 托盘部分窗口测试 + 11 个 T102 协议夹具测试 + 5 个 T201 子进程生命周期测试 + 5 个 T202 JSONL 测试 + 2 个 T203 握手测试 + 5 个 T204 连接边界测试 + 6 个 T205 supervisor 测试 + 5 个 T206 模拟 app-server 测试） |
 | 2026-07-20 | T102 协议边界 | 使用本机 `codex-cli 0.144.5` 生成并保存 6 份最小 Schema；初始化、账户、限额和 Token 用量夹具测试全部通过 |
@@ -288,3 +293,5 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、Codex �
 | 2026-07-28 | T326 | macOS 菜单栏改为动态周额度环形模板图标，旁边只显示周额度百分比（如 `90%`）；移除 `5h`、`W` 和默认方形应用图标 |
 | 2026-07-28 | T327 | Windows 收起态由横向悬浮条改为 82×82 圆形周额度悬浮球；圆环内实时显示周额度百分比和数据状态，点击悬浮球才展开详细面板 |
 | 2026-07-29 | T017 | GitHub `Sun-0102/codex_use_token` 成为主远端并使用 `main` 分支；原 Gitee 仓库继续以 `gitee` 远端保留 |
+| 2026-07-29 | T328 | Windows 安装版补充 `%USERPROFILE%\.codex` 本地会话目录，以及 `%APPDATA%\npm`、WindowsApps、Volta 的 Codex CLI 路径解析 |
+| 2026-07-29 | T606 | 新增 GitHub Actions Windows x64 自动构建流程；推送到 `main` 或手动运行后上传包含 NSIS `.exe` 与 WiX `.msi` 的 artifact |

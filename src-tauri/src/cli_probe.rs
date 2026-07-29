@@ -223,12 +223,54 @@ fn candidate_paths() -> Vec<PathBuf> {
         ));
     }
 
+    candidates.extend(windows_environment_candidates(
+        env::var_os("APPDATA").map(PathBuf::from),
+        env::var_os("LOCALAPPDATA").map(PathBuf::from),
+        env::var_os("USERPROFILE").map(PathBuf::from),
+    ));
+
     for directory in ["/opt/homebrew/bin", "/usr/local/bin"] {
         candidates.push(PathBuf::from(directory).join("codex"));
     }
 
     let mut seen = HashSet::new();
     candidates.retain(|candidate| seen.insert(candidate.clone()));
+    candidates
+}
+
+fn windows_environment_candidates(
+    app_data: Option<PathBuf>,
+    local_app_data: Option<PathBuf>,
+    user_profile: Option<PathBuf>,
+) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    if let Some(app_data) = app_data {
+        let npm_bin = app_data.join("npm");
+        candidates.extend([
+            npm_bin.join("codex.cmd"),
+            npm_bin.join("codex.exe"),
+            npm_bin.join("codex"),
+        ]);
+    }
+
+    if let Some(local_app_data) = local_app_data {
+        let windows_apps = local_app_data.join("Microsoft").join("WindowsApps");
+        candidates.extend([
+            windows_apps.join("codex.exe"),
+            windows_apps.join("codex.cmd"),
+        ]);
+    }
+
+    if let Some(user_profile) = user_profile {
+        let volta_bin = user_profile.join(".volta").join("bin");
+        candidates.extend([
+            volta_bin.join("codex.exe"),
+            volta_bin.join("codex.cmd"),
+            volta_bin.join("codex"),
+        ]);
+    }
+
     candidates
 }
 
@@ -387,6 +429,30 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn discovers_common_windows_cli_install_locations() {
+        let app_data = PathBuf::from("C:\\Users\\codex-user\\AppData\\Roaming");
+        let local_app_data = PathBuf::from("C:\\Users\\codex-user\\AppData\\Local");
+        let user_profile = PathBuf::from("C:\\Users\\codex-user");
+
+        let candidates = windows_environment_candidates(
+            Some(app_data.clone()),
+            Some(local_app_data.clone()),
+            Some(user_profile.clone()),
+        );
+
+        assert!(candidates.contains(&app_data.join("npm").join("codex.cmd")));
+        assert!(
+            candidates.contains(
+                &local_app_data
+                    .join("Microsoft")
+                    .join("WindowsApps")
+                    .join("codex.exe")
+            )
+        );
+        assert!(candidates.contains(&user_profile.join(".volta").join("bin").join("codex.cmd")));
     }
 
     #[test]

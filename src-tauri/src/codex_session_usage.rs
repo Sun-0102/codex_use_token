@@ -73,7 +73,7 @@ pub fn read_codex_session_usage_status() -> CodexSessionUsageStatus {
     let captured_at_ms = now.timestamp_millis().max(0) as u64;
     let Some(codex_dir) = default_codex_directory() else {
         return CodexSessionUsageStatus::unavailable(
-            "未找到 HOME，无法读取 Codex 本地会话统计",
+            "未找到 Codex 用户目录，无法读取本地会话统计",
             captured_at_ms,
         );
     };
@@ -96,9 +96,32 @@ pub fn read_codex_session_usage_status() -> CodexSessionUsageStatus {
 }
 
 fn default_codex_directory() -> Option<PathBuf> {
-    env::var_os("CODEX_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".codex")))
+    #[cfg(target_os = "windows")]
+    let (primary_home, fallback_home) = (
+        env::var_os("USERPROFILE").map(PathBuf::from),
+        env::var_os("HOME").map(PathBuf::from),
+    );
+    #[cfg(not(target_os = "windows"))]
+    let (primary_home, fallback_home) = (
+        env::var_os("HOME").map(PathBuf::from),
+        env::var_os("USERPROFILE").map(PathBuf::from),
+    );
+
+    resolve_codex_directory(
+        env::var_os("CODEX_HOME").map(PathBuf::from),
+        primary_home,
+        fallback_home,
+    )
+}
+
+fn resolve_codex_directory(
+    codex_home: Option<PathBuf>,
+    primary_home: Option<PathBuf>,
+    fallback_home: Option<PathBuf>,
+) -> Option<PathBuf> {
+    codex_home.or(primary_home
+        .or(fallback_home)
+        .map(|home| home.join(".codex")))
 }
 
 fn local_day_bounds(now: DateTime<Local>) -> Option<(i64, i64)> {
@@ -366,6 +389,28 @@ impl std::fmt::Display for CodexSessionUsageError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resolves_codex_home_before_platform_user_directories() {
+        let resolved = resolve_codex_directory(
+            Some(PathBuf::from("/custom/codex")),
+            Some(PathBuf::from("/primary")),
+            Some(PathBuf::from("/fallback")),
+        );
+
+        assert_eq!(resolved, Some(PathBuf::from("/custom/codex")));
+    }
+
+    #[test]
+    fn falls_back_to_the_available_platform_user_directory() {
+        let resolved =
+            resolve_codex_directory(None, None, Some(PathBuf::from("C:\\Users\\codex-user")));
+
+        assert_eq!(
+            resolved,
+            Some(PathBuf::from("C:\\Users\\codex-user").join(".codex"))
+        );
+    }
 
     #[test]
     fn summarizes_today_from_codex_session_token_events() {
