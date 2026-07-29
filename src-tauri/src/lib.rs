@@ -14,6 +14,7 @@ pub mod codex_session_usage;
 mod commands;
 mod desktop;
 mod monitor_refresh;
+mod windows_wsl;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

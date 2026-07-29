@@ -1,10 +1,14 @@
 use serde::Serialize;
 use std::{
     collections::HashSet,
-    env, fs, io,
+    env,
+    ffi::OsString,
+    fs, io,
     path::{Path, PathBuf},
     process::Command,
 };
+
+use crate::windows_wsl;
 
 const MINIMUM_SUPPORTED_VERSION: CliVersion = CliVersion::new(0, 144, 5);
 
@@ -52,17 +56,17 @@ struct CommandResult {
 }
 
 trait CommandRunner {
-    fn run(&self, executable: &Path, arguments: &[&str]) -> io::Result<CommandResult>;
+    fn run(&self, command: &CodexLaunchCommand, arguments: &[&str]) -> io::Result<CommandResult>;
 }
 
 struct SystemCommandRunner;
 
 impl CommandRunner for SystemCommandRunner {
-    fn run(&self, executable: &Path, arguments: &[&str]) -> io::Result<CommandResult> {
-        let mut command = Command::new(executable);
-        command.args(arguments);
+    fn run(&self, launch: &CodexLaunchCommand, arguments: &[&str]) -> io::Result<CommandResult> {
+        let mut command = Command::new(launch.executable());
+        command.args(launch.argument_prefix()).args(arguments);
 
-        if let Some(executable_directory) = executable.parent() {
+        if let Some(executable_directory) = launch.executable().parent() {
             let inherited_path = env::var_os("PATH").unwrap_or_default();
             let child_paths = std::iter::once(executable_directory.to_path_buf())
                 .chain(env::split_paths(&inherited_path));
@@ -70,6 +74,7 @@ impl CommandRunner for SystemCommandRunner {
                 command.env("PATH", child_path);
             }
         }
+        configure_no_window(&mut command);
 
         let output = command.output()?;
 
@@ -81,29 +86,118 @@ impl CommandRunner for SystemCommandRunner {
     }
 }
 
-pub fn probe_codex_cli() -> CodexCliStatus {
-    probe_discovered_executable(discover_codex_executable(), &SystemCommandRunner)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CodexLaunchCommand {
+    executable: PathBuf,
+    argument_prefix: Vec<OsString>,
+    display_path: String,
 }
 
+impl CodexLaunchCommand {
+    fn native(executable: PathBuf) -> Self {
+        let display_path = executable.to_string_lossy().into_owned();
+        Self {
+            executable,
+            argument_prefix: Vec::new(),
+            display_path,
+        }
+    }
+
+    fn wsl(
+        wsl_executable: PathBuf,
+        distribution: impl Into<String>,
+        codex_executable: impl Into<String>,
+    ) -> Self {
+        let distribution = distribution.into();
+        let codex_executable = codex_executable.into();
+        Self {
+            executable: wsl_executable,
+            argument_prefix: vec![
+                "--distribution".into(),
+                distribution.clone().into(),
+                "--exec".into(),
+                codex_executable.clone().into(),
+            ],
+            display_path: format!("WSL ({distribution}): {codex_executable}"),
+        }
+    }
+
+    pub(crate) fn executable(&self) -> &Path {
+        &self.executable
+    }
+
+    pub(crate) fn argument_prefix(&self) -> &[OsString] {
+        &self.argument_prefix
+    }
+
+    fn display_path(&self) -> &str {
+        &self.display_path
+    }
+
+    pub(crate) fn into_parts(self) -> (PathBuf, Vec<OsString>) {
+        (self.executable, self.argument_prefix)
+    }
+}
+
+pub fn probe_codex_cli() -> CodexCliStatus {
+    probe_discovered_commands(discover_codex_launch_commands(), &SystemCommandRunner).0
+}
+
+#[cfg(test)]
 fn probe_discovered_executable(
     executable: Option<PathBuf>,
     runner: &impl CommandRunner,
 ) -> CodexCliStatus {
-    let Some(executable) = executable else {
-        return CodexCliStatus {
-            state: CodexCliState::NotInstalled,
-            executable_path: None,
-            version: None,
-            message: "未检测到 Codex CLI，请先安装 Codex".to_string(),
-        };
-    };
-
-    probe_executable(&executable, runner)
+    probe_discovered_commands(
+        executable
+            .map(CodexLaunchCommand::native)
+            .into_iter()
+            .collect(),
+        runner,
+    )
+    .0
 }
 
+fn probe_discovered_commands(
+    commands: Vec<CodexLaunchCommand>,
+    runner: &impl CommandRunner,
+) -> (CodexCliStatus, Option<CodexLaunchCommand>) {
+    if commands.is_empty() {
+        return (
+            CodexCliStatus {
+                state: CodexCliState::NotInstalled,
+                executable_path: None,
+                version: None,
+                message: "未检测到 Codex CLI，请先安装 Codex".to_string(),
+            },
+            None,
+        );
+    }
+
+    let mut fallback = None;
+    for command in commands {
+        let status = probe_command(&command, runner);
+        if status.state == CodexCliState::Available {
+            return (status, Some(command));
+        }
+        fallback.get_or_insert((status, command));
+    }
+
+    let (status, command) = fallback.expect("non-empty command list");
+    (status, Some(command))
+}
+
+#[cfg(test)]
 fn probe_executable(executable: &Path, runner: &impl CommandRunner) -> CodexCliStatus {
-    let display_path = executable.to_string_lossy().into_owned();
-    let version_result = match runner.run(executable, &["--version"]) {
+    probe_command(
+        &CodexLaunchCommand::native(executable.to_path_buf()),
+        runner,
+    )
+}
+
+fn probe_command(command: &CodexLaunchCommand, runner: &impl CommandRunner) -> CodexCliStatus {
+    let display_path = command.display_path().to_string();
+    let version_result = match runner.run(command, &["--version"]) {
         Ok(result) if result.success => result,
         _ => {
             return CodexCliStatus {
@@ -136,7 +230,7 @@ fn probe_executable(executable: &Path, runner: &impl CommandRunner) -> CodexCliS
         };
     }
 
-    match runner.run(executable, &["login", "status"]) {
+    match runner.run(command, &["login", "status"]) {
         Ok(result) if result.success => CodexCliStatus {
             state: CodexCliState::Available,
             executable_path: Some(display_path),
@@ -164,11 +258,42 @@ fn probe_executable(executable: &Path, runner: &impl CommandRunner) -> CodexCliS
     }
 }
 
-pub(crate) fn discover_codex_executable() -> Option<PathBuf> {
-    candidate_paths()
+pub(crate) fn discover_codex_launch_command() -> Option<CodexLaunchCommand> {
+    if let Some(explicit_path) = env::var_os("CODEX_CLI_PATH")
+        .map(PathBuf::from)
+        .filter(|path| path.is_file())
+    {
+        return Some(CodexLaunchCommand::native(explicit_path));
+    }
+
+    probe_discovered_commands(discover_codex_launch_commands(), &SystemCommandRunner).1
+}
+
+fn discover_codex_launch_commands() -> Vec<CodexLaunchCommand> {
+    let mut commands = candidate_paths()
         .into_iter()
-        .find(|path| path.is_file())
-        .or_else(discover_codex_from_login_shell)
+        .filter(|path| path.is_file())
+        .map(CodexLaunchCommand::native)
+        .collect::<Vec<_>>();
+
+    if commands.is_empty()
+        && let Some(executable) = discover_codex_from_login_shell()
+    {
+        commands.push(CodexLaunchCommand::native(executable));
+    }
+
+    commands.extend(
+        windows_wsl::discover_wsl_codex_installations()
+            .into_iter()
+            .map(|installation| {
+                CodexLaunchCommand::wsl(
+                    installation.wsl_executable().to_path_buf(),
+                    installation.distribution(),
+                    installation.codex_executable(),
+                )
+            }),
+    );
+    commands
 }
 
 fn candidate_paths() -> Vec<PathBuf> {
@@ -367,6 +492,17 @@ fn format_version(version: CliVersion) -> String {
     format!("{}.{}.{}", version.major, version.minor, version.patch)
 }
 
+#[cfg(target_os = "windows")]
+fn configure_no_window(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(target_os = "windows"))]
+fn configure_no_window(_command: &mut Command) {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -385,7 +521,11 @@ mod tests {
     }
 
     impl CommandRunner for FakeRunner {
-        fn run(&self, _executable: &Path, _arguments: &[&str]) -> io::Result<CommandResult> {
+        fn run(
+            &self,
+            _command: &CodexLaunchCommand,
+            _arguments: &[&str],
+        ) -> io::Result<CommandResult> {
             self.results.lock().unwrap().pop_front().unwrap()
         }
     }
@@ -480,6 +620,67 @@ mod tests {
             )
         );
         assert!(candidates.contains(&user_profile.join(".volta").join("bin").join("codex.cmd")));
+    }
+
+    #[test]
+    fn builds_a_wsl_launch_command_without_shell_interpolation() {
+        let command = CodexLaunchCommand::wsl(
+            PathBuf::from("C:\\Windows\\System32\\wsl.exe"),
+            "Ubuntu",
+            "/home/codex/.local/bin/codex",
+        );
+
+        assert_eq!(
+            command.executable(),
+            Path::new("C:\\Windows\\System32\\wsl.exe")
+        );
+        assert_eq!(
+            command
+                .argument_prefix()
+                .iter()
+                .map(|argument| argument.to_string_lossy().into_owned())
+                .collect::<Vec<_>>(),
+            [
+                "--distribution",
+                "Ubuntu",
+                "--exec",
+                "/home/codex/.local/bin/codex"
+            ]
+        );
+        assert_eq!(
+            command.display_path(),
+            "WSL (Ubuntu): /home/codex/.local/bin/codex"
+        );
+    }
+
+    #[test]
+    fn prefers_a_logged_in_wsl_cli_when_the_native_cli_is_logged_out() {
+        let runner = FakeRunner::with(vec![
+            success("codex-cli 0.144.5"),
+            failure("Not logged in"),
+            success("codex-cli 0.144.5"),
+            success("Logged in using ChatGPT"),
+        ]);
+        let commands = vec![
+            CodexLaunchCommand::native(PathBuf::from("C:\\native\\codex.exe")),
+            CodexLaunchCommand::wsl(
+                PathBuf::from("C:\\Windows\\System32\\wsl.exe"),
+                "Ubuntu",
+                "/home/codex/.local/bin/codex",
+            ),
+        ];
+
+        let (status, selected) = probe_discovered_commands(commands, &runner);
+
+        assert_eq!(status.state, CodexCliState::Available);
+        assert_eq!(
+            status.executable_path.as_deref(),
+            Some("WSL (Ubuntu): /home/codex/.local/bin/codex")
+        );
+        assert_eq!(
+            selected.expect("selected WSL command").display_path(),
+            "WSL (Ubuntu): /home/codex/.local/bin/codex"
+        );
     }
 
     #[test]

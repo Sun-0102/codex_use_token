@@ -32,6 +32,21 @@ describe("presentCliStatus", () => {
     });
   });
 
+  it("marks a ready CLI that is running through WSL", () => {
+    expect(
+      presentCliStatus({
+        state: "available",
+        executablePath: "WSL (Ubuntu): /home/codex/.local/bin/codex",
+        version: "0.144.5",
+        message: "Codex CLI 已通过 WSL 安装并登录",
+      }),
+    ).toEqual({
+      label: "CLI 已就绪",
+      detail: "v0.144.5 · 已登录 · WSL (Ubuntu)",
+      tone: "ready",
+    });
+  });
+
   it("lists the searched CLI locations when no executable is found", () => {
     expect(
       presentCliStatus({
@@ -42,7 +57,7 @@ describe("presentCliStatus", () => {
       }),
     ).toMatchObject({
       label: "未检测到 CLI",
-      detail: "已检查系统 PATH 和常见安装目录",
+      detail: "已检查 Windows、WSL 和常见安装目录",
       tone: "error",
     });
   });

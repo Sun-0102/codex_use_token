@@ -19,20 +19,22 @@ export function presentCliStatus(
 
   const staleSuffix = status.isStale ? " · 过期缓存" : "";
   const pathSuffix = status.executablePath ? ` · ${status.executablePath}` : "";
+  const wslMatch = status.executablePath?.match(/^(WSL \([^)]+\)):/);
+  const runtimeSuffix = wslMatch === undefined || wslMatch === null ? "" : ` · ${wslMatch[1]}`;
 
   switch (status.state) {
     case "available":
       return {
         label: "CLI 已就绪",
         detail: status.version
-          ? `v${status.version} · 已登录${staleSuffix}`
-          : `已登录${staleSuffix}`,
+          ? `v${status.version} · 已登录${runtimeSuffix}${staleSuffix}`
+          : `已登录${runtimeSuffix}${staleSuffix}`,
         tone: "ready",
       };
     case "notInstalled":
       return {
         label: "未检测到 CLI",
-        detail: `已检查系统 PATH 和常见安装目录${staleSuffix}`,
+        detail: `已检查 Windows、WSL 和常见安装目录${staleSuffix}`,
         tone: "error",
       };
     case "notLoggedIn":

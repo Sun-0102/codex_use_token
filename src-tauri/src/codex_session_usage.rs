@@ -9,6 +9,8 @@ use std::{
 use chrono::{DateTime, Datelike, Days, Local, NaiveDate, TimeZone};
 use serde::Serialize;
 
+use crate::windows_wsl;
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodexSessionUsageStatus {
@@ -71,28 +73,46 @@ impl CodexSessionUsageStatus {
 pub fn read_codex_session_usage_status() -> CodexSessionUsageStatus {
     let now = Local::now();
     let captured_at_ms = now.timestamp_millis().max(0) as u64;
-    let Some(codex_dir) = default_codex_directory() else {
+    let codex_directories = candidate_codex_directories();
+    if codex_directories.is_empty() {
         return CodexSessionUsageStatus::unavailable(
             "未找到 Codex 用户目录，无法读取本地会话统计",
             captured_at_ms,
         );
-    };
+    }
     let Some((day_start, day_end)) = local_day_bounds(now) else {
         return CodexSessionUsageStatus::unavailable("无法确定本地日期范围", captured_at_ms);
     };
 
-    match summarize_codex_session_usage_from_dir(&codex_dir, day_start, day_end) {
+    match summarize_codex_session_usage_from_dirs(&codex_directories, day_start, day_end) {
         Ok(today) => CodexSessionUsageStatus {
             state: CodexSessionUsageState::Available,
             captured_at_ms,
             message: format!(
-                "已从 Codex 本地会话日志统计今日用量：{} 个请求",
-                today.request_count
+                "已从 {} 个 Codex 会话目录统计今日用量：{} 个请求",
+                codex_directories
+                    .iter()
+                    .filter(|directory| directory.is_dir())
+                    .count(),
+                today.request_count,
             ),
             today: Some(today),
         },
         Err(error) => CodexSessionUsageStatus::unavailable(error.to_string(), captured_at_ms),
     }
+}
+
+fn candidate_codex_directories() -> Vec<PathBuf> {
+    let mut directories = default_codex_directory().into_iter().collect::<Vec<_>>();
+    directories.extend(
+        windows_wsl::discover_wsl_codex_installations()
+            .into_iter()
+            .filter_map(|installation| installation.codex_home().map(Path::to_path_buf)),
+    );
+
+    let mut seen = HashSet::new();
+    directories.retain(|directory| seen.insert(directory.clone()));
+    directories
 }
 
 fn default_codex_directory() -> Option<PathBuf> {
@@ -167,6 +187,46 @@ fn summarize_codex_session_usage_from_dir(
     today.fresh_input_tokens = today.input_tokens.saturating_sub(today.cache_read_tokens);
     today.total_tokens = today.input_tokens.saturating_add(today.output_tokens);
     Ok(today)
+}
+
+fn summarize_codex_session_usage_from_dirs(
+    codex_directories: &[PathBuf],
+    day_start: i64,
+    day_end: i64,
+) -> Result<CodexSessionDailyUsage, CodexSessionUsageError> {
+    let mut combined = CodexSessionDailyUsage::default();
+    let mut readable_directories = 0usize;
+    let mut last_error = None;
+
+    for directory in codex_directories {
+        match summarize_codex_session_usage_from_dir(directory, day_start, day_end) {
+            Ok(usage) => {
+                readable_directories += 1;
+                combined.request_count = combined.request_count.saturating_add(usage.request_count);
+                combined.input_tokens = combined.input_tokens.saturating_add(usage.input_tokens);
+                combined.fresh_input_tokens = combined
+                    .fresh_input_tokens
+                    .saturating_add(usage.fresh_input_tokens);
+                combined.output_tokens = combined.output_tokens.saturating_add(usage.output_tokens);
+                combined.cache_read_tokens = combined
+                    .cache_read_tokens
+                    .saturating_add(usage.cache_read_tokens);
+                combined.cache_creation_tokens = combined
+                    .cache_creation_tokens
+                    .saturating_add(usage.cache_creation_tokens);
+                combined.total_tokens = combined.total_tokens.saturating_add(usage.total_tokens);
+            }
+            Err(error) => last_error = Some(error),
+        }
+    }
+
+    if readable_directories == 0 {
+        return Err(last_error.unwrap_or_else(|| {
+            CodexSessionUsageError::Unavailable("未找到 Codex 本地会话目录".to_string())
+        }));
+    }
+
+    Ok(combined)
 }
 
 fn collect_candidate_session_files(codex_dir: &Path, day_start: i64) -> Vec<PathBuf> {
@@ -450,6 +510,33 @@ mod tests {
     }
 
     #[test]
+    fn sums_today_usage_across_native_and_wsl_directories() {
+        let native_root = unique_test_dir("native-summary");
+        let wsl_root = unique_test_dir("wsl-summary");
+        let date = NaiveDate::from_ymd_opt(2026, 7, 24).expect("date");
+        let (day_start, day_end) = test_day_bounds(date);
+
+        write_last_usage_event(&native_root, date, day_start + 60, 30, 20, 5);
+        write_last_usage_event(&wsl_root, date, day_start + 120, 70, 50, 10);
+
+        let usage = summarize_codex_session_usage_from_dirs(
+            &[native_root.clone(), wsl_root.clone()],
+            day_start,
+            day_end,
+        )
+        .expect("combined usage");
+
+        assert_eq!(usage.request_count, 2);
+        assert_eq!(usage.input_tokens, 100);
+        assert_eq!(usage.cache_read_tokens, 70);
+        assert_eq!(usage.output_tokens, 15);
+        assert_eq!(usage.total_tokens, 115);
+
+        fs::remove_dir_all(native_root).expect("remove native test directory");
+        fs::remove_dir_all(wsl_root).expect("remove WSL test directory");
+    }
+
+    #[test]
     fn uses_previous_day_totals_as_the_baseline_without_counting_them_today() {
         let root = unique_test_dir("previous-baseline");
         let date = NaiveDate::from_ymd_opt(2026, 7, 24).expect("date");
@@ -563,5 +650,36 @@ mod tests {
             .join(format!("{:04}", date.year()))
             .join(format!("{:02}", date.month()))
             .join(format!("{:02}", date.day()))
+    }
+
+    fn write_last_usage_event(
+        root: &Path,
+        date: NaiveDate,
+        timestamp: i64,
+        input_tokens: u64,
+        cached_input_tokens: u64,
+        output_tokens: u64,
+    ) {
+        let sessions = session_partition(root, date);
+        fs::create_dir_all(&sessions).expect("create session directory");
+        fs::write(
+            sessions.join(format!("rollout-{timestamp}.jsonl")),
+            serde_json::json!({
+                "timestamp": test_timestamp(timestamp),
+                "type": "event_msg",
+                "payload": {
+                    "type": "token_count",
+                    "info": {
+                        "last_token_usage": {
+                            "input_tokens": input_tokens,
+                            "cached_input_tokens": cached_input_tokens,
+                            "output_tokens": output_tokens,
+                        }
+                    }
+                }
+            })
+            .to_string(),
+        )
+        .expect("write usage event");
     }
 }

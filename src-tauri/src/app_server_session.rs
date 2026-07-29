@@ -20,10 +20,13 @@ impl AppServerCommand {
     }
 
     pub fn codex_from_environment() -> Self {
-        let executable =
-            cli_probe::discover_codex_executable().unwrap_or_else(|| PathBuf::from("codex"));
+        let Some(command) = cli_probe::discover_codex_launch_command() else {
+            return Self::codex();
+        };
+        let (executable, mut arguments) = command.into_parts();
+        arguments.extend(["app-server".into(), "--stdio".into()]);
 
-        Self::new(executable).with_args(["app-server", "--stdio"])
+        Self::new(executable).with_args(arguments)
     }
 
     pub fn new(executable: impl Into<PathBuf>) -> Self {
@@ -70,6 +73,7 @@ impl AppServerSession {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         prepend_executable_directory_to_path(&mut child_command, command.executable())?;
+        configure_no_window(&mut child_command);
 
         let mut child = child_command.spawn()?;
 
@@ -142,6 +146,17 @@ impl AppServerSession {
         Ok(())
     }
 }
+
+#[cfg(target_os = "windows")]
+fn configure_no_window(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(target_os = "windows"))]
+fn configure_no_window(_command: &mut Command) {}
 
 impl Drop for AppServerSession {
     fn drop(&mut self) {
