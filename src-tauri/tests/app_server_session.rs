@@ -1,7 +1,12 @@
-use codex_reserve_lib::app_server_session::{AppServerCommand, AppServerSession};
+use codex_reserve_lib::app_server_session::AppServerCommand;
+use std::path::Path;
+
+#[cfg(unix)]
+use codex_reserve_lib::app_server_session::AppServerSession;
+#[cfg(unix)]
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::atomic::{AtomicU64, Ordering},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -11,6 +16,7 @@ use std::os::unix::fs::PermissionsExt;
 #[cfg(unix)]
 use std::process::{Command, Stdio};
 
+#[cfg(unix)]
 static TEST_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[test]
@@ -28,6 +34,7 @@ fn codex_command_uses_app_server_stdio() {
     );
 }
 
+#[cfg(unix)]
 fn unique_test_path(name: &str) -> PathBuf {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -74,6 +81,7 @@ fn shell_quote(path: &Path) -> String {
     format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
 }
 
+#[cfg(unix)]
 fn wait_for_file(path: &Path) -> String {
     for _ in 0..200 {
         if let Ok(content) = fs::read_to_string(path) {
@@ -86,6 +94,7 @@ fn wait_for_file(path: &Path) -> String {
     fs::read_to_string(path).expect("file to be created")
 }
 
+#[cfg(unix)]
 fn wait_until_stopped(session: &mut AppServerSession) {
     for _ in 0..240 {
         if !session.is_running().expect("running status") {

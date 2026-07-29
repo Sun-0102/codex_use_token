@@ -3,10 +3,8 @@ use codex_reserve_lib::app_server_supervisor::{
 };
 use std::{
     cell::Cell,
-    fs, io,
-    path::{Path, PathBuf},
+    io,
     rc::Rc,
-    sync::atomic::{AtomicU64, Ordering},
     time::{Duration, Instant},
 };
 
@@ -16,7 +14,14 @@ use codex_reserve_lib::app_server_session::{AppServerCommand, AppServerSession};
 use std::os::unix::fs::PermissionsExt;
 #[cfg(unix)]
 use std::process::{Command, Stdio};
+#[cfg(unix)]
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
+};
 
+#[cfg(unix)]
 static TEST_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone)]

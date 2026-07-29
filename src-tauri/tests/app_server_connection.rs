@@ -1,15 +1,15 @@
 use codex_reserve_lib::{
     app_server_connection::{AppServerConnection, redact_app_server_log_line},
-    app_server_jsonl::JsonlError,
-    app_server_protocol::{InitializeResponse, RequestId, method},
+    app_server_protocol::{InitializeResponse, method},
 };
-use std::{
-    io::Cursor,
-    time::{Duration, Instant},
-};
+use std::{io::Cursor, time::Duration};
 
 #[cfg(unix)]
+use codex_reserve_lib::{app_server_jsonl::JsonlError, app_server_protocol::RequestId};
+#[cfg(unix)]
 use std::os::unix::net::UnixStream;
+#[cfg(unix)]
+use std::time::Instant;
 
 #[test]
 fn routes_notifications_away_from_matching_responses() {
