@@ -1,6 +1,6 @@
 # Codex Reserve 开发任务清单
 
-最后更新：2026-07-28
+最后更新：2026-07-29
 
 > 本文档是项目进度的唯一事实来源。每次新增、修改或完成需求后，都必须同步更新“当前状态”“任务清单”“验证记录”和“更新日志”。
 
@@ -9,13 +9,13 @@
 | 项目 | 状态 |
 | --- | --- |
 | 当前版本 | `0.1.0` |
-| 当前阶段 | T327 Windows 圆形周额度悬浮球已完成；等待 Windows x64 真机验收 |
+| 当前阶段 | T327 Windows 圆形周额度悬浮球已完成；T017 GitHub 主远端迁移已完成；等待 Windows x64 真机验收 |
 | 当前数据 | 账户状态/套餐来自真实 `account/read`；额度窗口来自真实 `account/rateLimits/read`；今日真实 Token 直接来自 `$CODEX_HOME/sessions`（默认 `~/.codex/sessions`）和 `archived_sessions` 的 `event_msg/token_count` 数字事件，按累计快照差值还原请求并以 `input_tokens + output_tokens` 统计，不依赖 cc-switch；账户 Token 日桶/累计仍来自真实 `account/usage/read` 作为兜底；当前任务 Token 来自同一个应用级 app-server 长连接接收的 `thread/tokenUsage/updated`（仅当前连接可见）；全部监控项启动时立即读取并由 Tauri 后台每 30 秒发出刷新节拍，窗口隐藏后继续刷新，上一轮未结束时跳过本轮；安装版会解析 PATH、nvm、fnm、asdf、Homebrew 和登录 shell 中的 Codex CLI 路径；账户、额度、账户 Token 和当前任务 Token 复用一个 `codex app-server --stdio` 长连接；连接失败时显示 Demo 或 stale，不标记为实时 |
 | macOS | 菜单栏常驻；原生 NSPanel 浮层；点击外部自动隐藏；托盘定位拿不到 monitor 时降级到右上角显示 |
 | Windows | 托盘入口与 82×82 周额度悬浮球 / 420×510 详细面板两种窗口形态已编码，尚未在 Windows 真机验收 |
 | Codex 连接 | 已能探测 CLI 状态、解析所需协议数据、启动/清理应用级 app-server 长连接、进行 JSONL 编解码与请求/响应关联、完成一次性握手，分流通知、处理请求超时、脱敏 stderr，管理异常退出后的重建与 shutdown 清理，用模拟 app-server 覆盖关键场景，并通过 `account/read` 读取真实登录状态和套餐、通过 `account/rateLimits/read` 读取所有限额桶并显示真实剩余比例/重置时间，能合并 `account/rateLimits/updated` 稀疏通知，通过 `account/usage/read` 显示真实账户 Token 日桶/累计，直接解析 Codex 本地会话 JSONL 显示今日真实 Token、缓存命中和请求数，能解析/展示 `thread/tokenUsage/updated` 当前任务 Token 通知，将同一份真实快照同步到菜单栏、收起态和详细面板，并在断开后保留最后快照且标记 stale；真实数据可用后不再显示 Demo 数值 |
 | 下一项任务 | T401：设计 SQLite schema、迁移与数据保留策略 |
-| Git | 已初始化；`master` 跟踪 `origin/master`，远端为用户指定的 Gitee 仓库 |
+| Git | `main` 跟踪 GitHub `origin/main`；原 Gitee 远端保留为 `gitee` |
 
 当前结论：软件框架、悬浮层、CLI 探测、协议类型边界、app-server 子进程生命周期、应用级 app-server 长连接、JSONL 请求/响应通道、初始化握手、通知分流、请求超时、stderr 日志边界、异常退出检测、重建与应用退出清理、模拟 app-server 场景覆盖、真实账户状态读取、真实限额桶读取、真实限额显示、稀疏限额通知合并、真实账户 Token 日桶/累计、Codex 本地会话今日 Token 统计、线程级 Token 通知展示、同源快照同步、stale 标记、Demo/实时互斥决策、统一 30 秒自动刷新与防重叠、安装版 CLI 路径解析、真实数据面板 UI 验收修复、指标卡裁切修复、可读性优化、菜单栏单周窗口额度同步修复、macOS 面板定位失败兜底、Token 中文单位显示、Token 口径文案修正和详细面板视觉重构已经完成；详细面板仅展示周额度，不展示 5 小时额度、套餐与 Credits，macOS 菜单栏只显示周额度动态环和百分比，Windows 收起态为 82×82 周额度悬浮球，点击后才展开详细面板，现在等待 Windows x64 真机验收。
 
@@ -46,6 +46,7 @@
 - [x] T014：锁定 macOS `tauri-nspanel` 依赖到明确提交版本。
 - [x] T015：建立长期开发任务清单和“每次完成需求必须更新文档”的项目级规则。
 - [x] T016：初始化 Git 仓库，将代码提交并发布到用户指定的 Gitee `master` 分支。
+- [x] T017：将主分支改为 `main`，把 GitHub `Sun-0102/codex_use_token` 设为主远端 `origin` 并完成首次推送；原 Gitee 仓库保留为 `gitee` 远端。
 
 ### R0 — 协议可行性验证
 
@@ -208,6 +209,7 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、Codex �
 | 2026-07-28 | T325 隐藏套餐与 Credits | `npm run check` 通过：10 个前端测试文件、49 个测试，TypeScript 与 Vite 生产构建通过；确认详细面板不再渲染套餐名称和 Credits 文案；`git diff --check` 通过 |
 | 2026-07-28 | T326 菜单栏周额度环 | `npm run check` 通过：10 个前端测试文件、50 个测试，TypeScript 与 Vite 生产构建通过；Rust 全量 75 个测试通过，其中新增测试覆盖动态环随周额度增加、标题仅显示 `90%`、缺失周额度显示 `--` 和非法百分比拒绝；`cargo fmt --check`、Clippy `-D warnings`、Tauri debug 无 bundle 构建和 `git diff --check` 通过 |
 | 2026-07-28 | T327 Windows 周额度悬浮球 | Chrome 以 82×82 视口和 3×设备像素比渲染验收，页面滚动尺寸保持 82×82，72×72 悬浮球、圆环、百分比和演示状态均未越界；`npm run check` 通过：10 个前端测试文件、50 个测试，TypeScript 与 Vite 生产构建通过；Rust 全量 75 个测试通过，窗口尺寸测试锁定 82×82；`cargo fmt --check`、Clippy `-D warnings` 和 Tauri debug 无 bundle 构建通过 |
+| 2026-07-29 | T017 GitHub 主远端迁移 | 将原 `origin` 安全重命名为 `gitee`，新增 `git@github.com:Sun-0102/codex_use_token.git` 为 `origin`，本地主分支由 `master` 改为 `main`；首次 `git push -u origin main` 成功并建立上游跟踪 |
 | 2026-07-20 | Rust 静态检查 | `cargo fmt --check` 和 `cargo clippy --all-targets -- -D warnings` 通过 |
 | 2026-07-20 | T206 主代理审查 | 按无 Git 项目约束审查 T206 变更；未发现规范或规格遗留问题 |
 | 2026-07-20 | T301 主代理审查 | 按无 Git 项目约束审查 T301 变更；确认只展示真实账户状态/套餐，额度仍标记为 Demo |
@@ -285,3 +287,4 @@ F3 验收：界面能显示当前账户真实的限额、重置时间、Codex �
 | 2026-07-28 | T325 | 从详细面板移除套餐与 Credits 区域，不再展示 `prolite` 或“无 Credits”，其余用量指标保持不变 |
 | 2026-07-28 | T326 | macOS 菜单栏改为动态周额度环形模板图标，旁边只显示周额度百分比（如 `90%`）；移除 `5h`、`W` 和默认方形应用图标 |
 | 2026-07-28 | T327 | Windows 收起态由横向悬浮条改为 82×82 圆形周额度悬浮球；圆环内实时显示周额度百分比和数据状态，点击悬浮球才展开详细面板 |
+| 2026-07-29 | T017 | GitHub `Sun-0102/codex_use_token` 成为主远端并使用 `main` 分支；原 Gitee 仓库继续以 `gitee` 远端保留 |
