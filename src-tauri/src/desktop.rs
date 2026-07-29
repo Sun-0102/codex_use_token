@@ -98,6 +98,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(target_os = "windows")]
     if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
         apply_window_mode(&window, WindowMode::Compact)?;
+        let _ = window.move_window(Position::TopRight);
         show_usage_window(app.app_handle());
     }
 
@@ -174,7 +175,13 @@ pub fn show_usage_window<R: Runtime>(app: &AppHandle<R>) {
         }
     }
 
-    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    #[cfg(target_os = "windows")]
+    {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+
+    #[cfg(target_os = "linux")]
     {
         let _ = window.move_window(Position::TopRight);
         let _ = window.show();
@@ -201,9 +208,6 @@ pub fn apply_window_mode<R: Runtime>(
     mode: WindowMode,
 ) -> tauri::Result<()> {
     window.set_size(mode.logical_size())?;
-
-    #[cfg(target_os = "windows")]
-    window.move_window(Position::TopRight)?;
 
     Ok(())
 }

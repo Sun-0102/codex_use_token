@@ -99,7 +99,8 @@ button:focus-visible {
     0 9px 22px rgba(36, 54, 64, 0.2),
     0 2px 6px rgba(36, 54, 64, 0.12),
     inset 0 1px rgba(255, 255, 255, 0.95);
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease;
@@ -114,6 +115,7 @@ button:focus-visible {
 }
 
 .compact-orb:active {
+  cursor: grabbing;
   transform: scale(0.975);
 }
 

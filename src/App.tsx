@@ -21,6 +21,7 @@ import {
   readCodexUsageStatus,
   readCodexSessionUsageStatus,
   setUsageWindowMode,
+  startUsageWindowDragging,
   updateTrayUsage,
   type CodexSessionUsageStatus,
   type CodexAccountStatus,
@@ -222,6 +223,7 @@ function App() {
       mode={windowMode}
       canCollapse={supportsCompactMode}
       onModeChange={changeWindowMode}
+      onStartDragging={startUsageWindowDragging}
       onHide={() => void hideUsageWindow().catch(() => undefined)}
     />
   );

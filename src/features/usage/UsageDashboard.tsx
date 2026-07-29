@@ -1,4 +1,9 @@
-import type { CSSProperties } from "react";
+import {
+  useRef,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import type {
   CodexAccountStatus,
   CodexCliStatus,
@@ -8,6 +13,7 @@ import type {
   UsageWindowMode,
 } from "../../platform/runtime";
 import { presentCliStatus } from "./cliStatus";
+import { shouldStartCompactDrag } from "./compactDrag";
 import {
   formatDuration,
   formatResetCountdown,
@@ -27,6 +33,7 @@ interface UsageDashboardProps {
   mode: UsageWindowMode;
   canCollapse: boolean;
   onModeChange: (mode: UsageWindowMode) => void;
+  onStartDragging: () => Promise<void>;
   onHide: () => void;
 }
 
@@ -37,23 +44,90 @@ type GaugeStyle = CSSProperties & {
 function CompactWidget({
   snapshot,
   onExpand,
+  onStartDragging,
 }: {
   snapshot: UsageSnapshot;
   onExpand: () => void;
+  onStartDragging: () => Promise<void>;
 }) {
   const isLive = snapshot.source === "codex";
   const isStale = snapshot.source === "stale";
   const weeklyWindow = selectWeeklyQuotaWindow(snapshot.windows);
   const sourceLabel = isLive ? "实时" : isStale ? "缓存" : "演示";
+  const pointerGesture = useRef<{
+    pointerId: number;
+    originX: number;
+    originY: number;
+    didDrag: boolean;
+  } | null>(null);
+
+  const handlePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+
+    pointerGesture.current = {
+      pointerId: event.pointerId,
+      originX: event.clientX,
+      originY: event.clientY,
+      didDrag: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const gesture = pointerGesture.current;
+    if (
+      gesture === null ||
+      gesture.pointerId !== event.pointerId ||
+      gesture.didDrag ||
+      (event.buttons & 1) === 0 ||
+      !shouldStartCompactDrag(
+        { x: gesture.originX, y: gesture.originY },
+        { x: event.clientX, y: event.clientY },
+      )
+    ) {
+      return;
+    }
+
+    gesture.didDrag = true;
+    void onStartDragging().catch(() => undefined);
+  };
+
+  const handlePointerUp = (event: PointerEvent<HTMLButtonElement>) => {
+    const gesture = pointerGesture.current;
+    if (gesture === null || gesture.pointerId !== event.pointerId) return;
+
+    pointerGesture.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (!gesture.didDrag) onExpand();
+  };
+
+  const handlePointerCancel = (event: PointerEvent<HTMLButtonElement>) => {
+    if (pointerGesture.current?.pointerId === event.pointerId) {
+      pointerGesture.current = null;
+    }
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    onExpand();
+  };
 
   return (
-    <main className="compact-canvas" data-tauri-drag-region>
+    <main className="compact-canvas">
       <button
         className={`compact-orb${isLive ? " is-live" : ""}${
           isStale ? " is-stale" : ""
         }`}
         type="button"
-        onClick={onExpand}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onKeyDown={handleKeyDown}
         title={`周额度${weeklyWindow === null ? "等待同步" : `剩余 ${weeklyWindow.remainingPercent}%`} · ${sourceLabel} · 点击查看详情`}
         aria-label={`周额度${weeklyWindow === null ? "等待同步" : `剩余 ${weeklyWindow.remainingPercent}%`}，${sourceLabel}数据，点击查看详情`}
       >
@@ -150,6 +224,7 @@ export function UsageDashboard({
   mode,
   canCollapse,
   onModeChange,
+  onStartDragging,
   onHide,
 }: UsageDashboardProps) {
   const capturedAt = new Intl.DateTimeFormat("zh-CN", {
@@ -180,6 +255,7 @@ export function UsageDashboard({
       <CompactWidget
         snapshot={snapshot}
         onExpand={() => onModeChange("detailed")}
+        onStartDragging={onStartDragging}
       />
     );
   }
@@ -188,7 +264,7 @@ export function UsageDashboard({
     <main className="window-canvas">
       <section className="status-panel">
         <header className="panel-header">
-          <div className="panel-drag-region" data-tauri-drag-region>
+          <div className="panel-drag-region" data-tauri-drag-region="deep">
             <span className="brand-mark" aria-hidden="true">
               CR
             </span>
@@ -288,10 +364,11 @@ export function UsageDashboard({
 
           <footer className="panel-footer">
             <span>
-              {isLive ? "实时" : isStale ? "过期缓存" : "演示"} · {capturedAt}
+              {isLive ? "实时" : isStale ? "过期缓存" : "演示"} · {capturedAt} ·
+              仅本机
             </span>
             <span title={connectionDetail}>
-              {accountPresentation.label} · 数据仅保存在本机
+              {connectionDetail}
             </span>
           </footer>
         </div>
@@ -315,6 +392,14 @@ export function presentConnectionDetail({
   isLive: boolean;
   isStale: boolean;
 }): string {
+  if (
+    accountStatus?.state === "unavailable" &&
+    cliStatus !== null &&
+    cliStatus.state !== "available"
+  ) {
+    return [accountDetail, cliDetail].filter(Boolean).join(" · ");
+  }
+
   const detail =
     accountStatus?.state === "signedIn"
       ? accountStatus.isStale

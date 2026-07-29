@@ -25,14 +25,14 @@ export function presentCliStatus(
       return {
         label: "CLI 已就绪",
         detail: status.version
-          ? `v${status.version} · 实时适配器待接入${staleSuffix}`
-          : `已登录 · 实时适配器待接入${staleSuffix}`,
+          ? `v${status.version} · 已登录${staleSuffix}`
+          : `已登录${staleSuffix}`,
         tone: "ready",
       };
     case "notInstalled":
       return {
         label: "未检测到 CLI",
-        detail: `已检查 PATH、nvm、fnm、asdf 和 Homebrew${staleSuffix}`,
+        detail: `已检查系统 PATH 和常见安装目录${staleSuffix}`,
         tone: "error",
       };
     case "notLoggedIn":

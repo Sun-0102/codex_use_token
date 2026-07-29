@@ -12,7 +12,7 @@ describe("presentCliStatus", () => {
       }),
     ).toEqual({
       label: "CLI 已就绪",
-      detail: "v0.144.5 · 实时适配器待接入",
+      detail: "v0.144.5 · 已登录",
       tone: "ready",
     });
   });
@@ -42,7 +42,7 @@ describe("presentCliStatus", () => {
       }),
     ).toMatchObject({
       label: "未检测到 CLI",
-      detail: "已检查 PATH、nvm、fnm、asdf 和 Homebrew",
+      detail: "已检查系统 PATH 和常见安装目录",
       tone: "error",
     });
   });
@@ -74,7 +74,7 @@ describe("presentCliStatus", () => {
       }),
     ).toEqual({
       label: "CLI 已就绪",
-      detail: "v0.144.5 · 实时适配器待接入 · 过期缓存",
+      detail: "v0.144.5 · 已登录 · 过期缓存",
       tone: "ready",
     });
   });

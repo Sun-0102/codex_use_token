@@ -74,6 +74,34 @@ describe("presentAccountStatus", () => {
 });
 
 describe("presentConnectionDetail", () => {
+  it("shows the CLI launch path when the app-server is unavailable", () => {
+    expect(
+      presentConnectionDetail({
+        accountStatus: {
+          state: "unavailable",
+          planType: null,
+          accountType: null,
+          capturedAtMs: 123,
+          message: "无法启动或通信到 Codex app-server",
+        },
+        accountDetail: "无法启动或通信到 Codex app-server",
+        cliStatus: {
+          state: "launchFailed",
+          executablePath:
+            "C:\\Users\\test\\AppData\\Local\\Programs\\OpenAI\\Codex\\bin\\codex.exe",
+          version: null,
+          message: "Codex CLI 无法启动，请检查安装权限",
+        },
+        cliDetail:
+          "Codex CLI 无法启动，请检查安装权限 · C:\\Users\\test\\AppData\\Local\\Programs\\OpenAI\\Codex\\bin\\codex.exe",
+        isLive: false,
+        isStale: false,
+      }),
+    ).toContain(
+      "C:\\Users\\test\\AppData\\Local\\Programs\\OpenAI\\Codex\\bin\\codex.exe",
+    );
+  });
+
   it("keeps CLI stale visible when account and quota are live", () => {
     expect(
       presentConnectionDetail({

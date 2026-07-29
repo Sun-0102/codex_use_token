@@ -191,6 +191,12 @@ fn candidate_paths() -> Vec<PathBuf> {
         }
     }
 
+    if let Some(install_directory) = env::var_os("CODEX_INSTALL_DIR").map(PathBuf::from) {
+        for name in executable_names {
+            candidates.push(install_directory.join(name));
+        }
+    }
+
     if let Some(home_directory) = env::var_os("HOME").map(PathBuf::from) {
         for relative_path in [
             ".local/bin/codex",
@@ -255,6 +261,17 @@ fn windows_environment_candidates(
     }
 
     if let Some(local_app_data) = local_app_data {
+        let standalone_bin = local_app_data
+            .join("Programs")
+            .join("OpenAI")
+            .join("Codex")
+            .join("bin");
+        candidates.extend([
+            standalone_bin.join("codex.exe"),
+            standalone_bin.join("codex.cmd"),
+            standalone_bin.join("codex"),
+        ]);
+
         let windows_apps = local_app_data.join("Microsoft").join("WindowsApps");
         candidates.extend([
             windows_apps.join("codex.exe"),
@@ -444,6 +461,16 @@ mod tests {
         );
 
         assert!(candidates.contains(&app_data.join("npm").join("codex.cmd")));
+        assert!(
+            candidates.contains(
+                &local_app_data
+                    .join("Programs")
+                    .join("OpenAI")
+                    .join("Codex")
+                    .join("bin")
+                    .join("codex.exe")
+            )
+        );
         assert!(
             candidates.contains(
                 &local_app_data

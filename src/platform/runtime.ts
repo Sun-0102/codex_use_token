@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export interface RuntimeHealth {
   appVersion: string;
@@ -165,6 +166,10 @@ export function hideUsageWindow(): Promise<void> {
 
 export function setUsageWindowMode(mode: UsageWindowMode): Promise<void> {
   return invoke<void>("set_usage_window_mode", { mode });
+}
+
+export function startUsageWindowDragging(): Promise<void> {
+  return getCurrentWindow().startDragging();
 }
 
 export function updateTrayUsage(weeklyRemainingPercent: number): Promise<void> {
